@@ -3,17 +3,20 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
-  const { login } = useAuthStore();
+  const { signup } = useAuthStore();
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
-    password: ''
+    password: '',
+    confirmPassword: ''
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,15 +35,28 @@ export default function LoginPage() {
     setIsLoading(true);
     setError('');
 
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const success = await login(formData.email, formData.password);
+      const success = await signup(formData.name, formData.email, formData.password);
       if (success) {
         router.push('/');
       } else {
-        setError('Invalid email or password. Please try again.');
+        setError('Signup failed. Please try again.');
       }
     } catch (err) {
-      setError('Login failed. Please try again.');
+      setError('Signup failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -57,10 +73,10 @@ export default function LoginPage() {
             🧸 PlayPro
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back
+            Create your account
           </h2>
           <p className="text-sm text-gray-600">
-            Sign in to your account to continue
+            Join PlayPro and start your toy adventure
           </p>
         </div>
       </div>
@@ -68,6 +84,29 @@ export default function LoginPage() {
       <div className="relative mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="glass-strong bg-white/80 backdrop-blur-md py-8 px-4 shadow-2xl sm:rounded-2xl sm:px-10 border border-white/20">
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Name Field */}
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
+              <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300"
+                  placeholder="Enter your full name"
+                />
+              </div>
+            </div>
+
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -104,12 +143,12 @@ export default function LoginPage() {
                   id="password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   required
                   value={formData.password}
                   onChange={handleChange}
                   className="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300"
-                  placeholder="Enter your password"
+                  placeholder="Create a password"
                 />
                 <button
                   type="button"
@@ -125,33 +164,46 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Confirm Password Field */}
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Confirm Password
+              </label>
+              <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300"
+                  placeholder="Confirm your password"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
+              </div>
+            </div>
+
             {/* Error Message */}
             {error && (
               <div className="bg-red-50/80 backdrop-blur-sm border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm">
                 {error}
               </div>
             )}
-
-            {/* Remember Me and Forgot Password */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a href="#" className="font-medium text-primary-600 hover:text-primary-500">
-                  Forgot your password?
-                </a>
-              </div>
-            </div>
 
             {/* Submit Button */}
             <div>
@@ -163,63 +215,58 @@ export default function LoginPage() {
                 {isLoading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                    Signing in...
+                    Creating account...
                   </>
                 ) : (
-                  'Sign in'
+                  'Create account'
                 )}
               </button>
             </div>
           </form>
 
-          {/* Demo Accounts */}
-          <div className="mt-8">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white/80 text-gray-500">Demo Accounts</span>
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              <button
-                onClick={() => setFormData({ email: 'demo@playpro.com', password: 'demo123' })}
-                className="w-full text-left px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50/80 backdrop-blur-sm text-sm transition-all duration-300"
-              >
-                <div className="font-medium">Demo User</div>
-                <div className="text-gray-500">demo@playpro.com / demo123</div>
-              </button>
-              <button
-                onClick={() => setFormData({ email: 'admin@playpro.com', password: 'admin123' })}
-                className="w-full text-left px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50/80 backdrop-blur-sm text-sm transition-all duration-300"
-              >
-                <div className="font-medium">Admin User</div>
-                <div className="text-gray-500">admin@playpro.com / admin123</div>
-              </button>
-            </div>
+          {/* Password Requirements */}
+          <div className="mt-6 p-4 bg-blue-50/80 backdrop-blur-sm rounded-xl border border-blue-200/50">
+            <h3 className="text-sm font-medium text-blue-900 mb-2">🔒 Password Requirements</h3>
+            <ul className="text-xs text-blue-700 space-y-1">
+              <li>• At least 6 characters long</li>
+              <li>• Use a mix of letters and numbers</li>
+              <li>• Keep it secure and unique</li>
+            </ul>
           </div>
 
-          {/* Sign Up Link */}
+          {/* Login Link */}
           <div className="mt-8">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white/80 text-gray-500">New to PlayPro?</span>
+                <span className="px-2 bg-white/80 text-gray-500">Already have an account?</span>
               </div>
             </div>
 
             <div className="mt-4">
               <Link
-                href="/signup"
+                href="/login"
                 className="w-full flex justify-center py-3 px-4 border border-primary-600 text-sm font-medium rounded-xl text-primary-600 bg-white/80 hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
               >
-                Create an account
+                Sign in to your account
               </Link>
             </div>
+          </div>
+
+          {/* Terms */}
+          <div className="mt-6 text-center">
+            <p className="text-xs text-gray-500">
+              By creating an account, you agree to our{' '}
+              <Link href="/terms" className="text-primary-600 hover:text-primary-500">
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link href="/privacy" className="text-primary-600 hover:text-primary-500">
+                Privacy Policy
+              </Link>
+            </p>
           </div>
         </div>
       </div>

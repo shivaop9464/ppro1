@@ -11,32 +11,23 @@ type Order = Database['public']['Tables']['orders']['Row']
 export class SupabaseService {
   // ================== AUTH METHODS ==================
   
-  async signInWithGoogle() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+  async signUp(email: string, password: string, name: string) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        data: {
+          name: name
+        }
       }
     })
     return { data, error }
   }
 
-  async signInWithFacebook() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'facebook',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`
-      }
-    })
-    return { data, error }
-  }
-
-  async signInWithApple() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'apple',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`
-      }
+  async signIn(email: string, password: string) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
     })
     return { data, error }
   }

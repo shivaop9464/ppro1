@@ -118,9 +118,15 @@ export default function Navigation() {
               <div className="hidden md:flex items-center space-x-2">
                 <Link
                   href="/login"
+                  className="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/signup"
                   className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-2 rounded-xl text-sm font-bold hover:from-purple-700 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
                 >
-                  Sign In
+                  Sign Up
                 </Link>
               </div>
             ) : (
@@ -159,10 +165,17 @@ export default function Navigation() {
                 <>
                   <Link
                     href="/login"
+                    className="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/signup"
                     className="bg-primary-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-primary-700 mx-3"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Sign In
+                    Sign Up
                   </Link>
                 </>
               )}

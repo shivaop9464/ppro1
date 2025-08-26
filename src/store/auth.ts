@@ -15,9 +15,8 @@ interface AuthState {
   isAuthenticated: boolean;
   loading: boolean;
   initialized: boolean;
-  signInWithGoogle: () => Promise<void>;
-  signInWithFacebook: () => Promise<void>;
-  signInWithApple: () => Promise<void>;
+  login: (email: string, password: string) => Promise<boolean>;
+  signup: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   initialize: () => Promise<void>;
   checkSession: () => Promise<void>;
@@ -88,55 +87,89 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
   
-  signInWithGoogle: async () => {
+  login: async (email: string, password: string) => {
     set({ loading: true });
     
     try {
-      const { error } = await supabaseService.signInWithGoogle();
+      const { data, error } = await supabaseService.signIn(email, password);
       
       if (error) {
-        console.error('Google sign in error:', error.message);
+        console.error('Login error:', error.message);
+        set({ loading: false });
+        return false;
       }
-      // Note: The actual authentication will happen via redirect
-      // User state will be updated in the callback
-    } catch (error) {
-      console.error('Google sign in error:', error);
-    } finally {
+      
+      if (data.user) {
+        // Get user profile
+        const result = await supabaseService.getCurrentUserProfile();
+        
+        if (result?.data && !result?.error) {
+          set({
+            user: {
+              id: result.data.id,
+              name: result.data.name,
+              email: result.data.email,
+              isAdmin: result.data.is_admin
+            },
+            isAuthenticated: true,
+            loading: false
+          });
+          return true;
+        }
+      }
+      
       set({ loading: false });
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      set({ loading: false });
+      return false;
     }
   },
   
-  signInWithFacebook: async () => {
+  signup: async (name: string, email: string, password: string) => {
     set({ loading: true });
     
     try {
-      const { error } = await supabaseService.signInWithFacebook();
+      const { data, error } = await supabaseService.signUp(email, password, name);
       
       if (error) {
-        console.error('Facebook sign in error:', error.message);
+        console.error('Signup error:', error.message);
+        set({ loading: false });
+        return false;
       }
-      // Note: The actual authentication will happen via redirect
-    } catch (error) {
-      console.error('Facebook sign in error:', error);
-    } finally {
-      set({ loading: false });
-    }
-  },
-  
-  signInWithApple: async () => {
-    set({ loading: true });
-    
-    try {
-      const { error } = await supabaseService.signInWithApple();
       
-      if (error) {
-        console.error('Apple sign in error:', error.message);
+      if (data.user) {
+        // For development, we'll auto-confirm the user
+        // In production, you might want email confirmation
+        
+        // Wait a moment for the trigger to create the user profile
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Get the newly created profile
+        const result = await supabaseService.getCurrentUserProfile();
+        
+        if (result?.data && !result?.error) {
+          set({
+            user: {
+              id: result.data.id,
+              name: result.data.name,
+              email: result.data.email,
+              isAdmin: result.data.is_admin
+            },
+            isAuthenticated: true,
+            loading: false
+          });
+          return true;
+        }
       }
-      // Note: The actual authentication will happen via redirect
-    } catch (error) {
-      console.error('Apple sign in error:', error);
-    } finally {
+      
       set({ loading: false });
+      return false;
+    } catch (error) {
+      console.error('Signup error:', error);
+      set({ loading: false });
+      return false;
     }
   },
   

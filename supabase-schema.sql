@@ -292,8 +292,7 @@ BEGIN
   VALUES (
     NEW.id,
     COALESCE(
-      NEW.raw_user_meta_data->>'full_name',
-      NEW.raw_user_meta_data->>'name', 
+      NEW.raw_user_meta_data->>'name',
       SPLIT_PART(NEW.email, '@', 1)
     ),
     NEW.email,

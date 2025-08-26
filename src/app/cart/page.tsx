@@ -21,16 +21,16 @@ const processPayment = (amount: number) => {
 export default function CartPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
-  const { items, selectedPlan, updateQuantity, removeFromCart, clearCart, getTotalPrice } = useCartStore();
+  const { items, selectedPlan, updateQuantity, removeFromCart, clearCart, getTotalPrice, loading } = useCartStore();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
-  const handleQuantityChange = (toyId: string, newQuantity: number) => {
-    updateQuantity(toyId, newQuantity);
+  const handleQuantityChange = async (toyId: string, newQuantity: number) => {
+    await updateQuantity(toyId, newQuantity);
   };
 
-  const handleRemoveItem = (toyId: string) => {
-    removeFromCart(toyId);
+  const handleRemoveItem = async (toyId: string) => {
+    await removeFromCart(toyId);
   };
 
   const handleCheckout = async () => {
@@ -128,7 +128,7 @@ export default function CartPage() {
                             {selectedPlan.name} Plan
                           </h3>
                           <p className="text-sm text-primary-700">
-                            {selectedPlan.toysPerMonth} toys per month
+                            {selectedPlan.toys_per_month} toys per month
                           </p>
                           <p className="text-xs text-primary-600 mt-1">
                             Monthly subscription
@@ -150,9 +150,9 @@ export default function CartPage() {
                       <div className="flex items-center">
                         {/* Toy Image/Icon */}
                         <div className="h-20 w-20 bg-gray-100 rounded-lg flex items-center justify-center mr-4 overflow-hidden relative">
-                          {item.toy.imageUrl ? (
+                          {item.toy.image_url ? (
                             <Image
-                              src={item.toy.imageUrl}
+                              src={item.toy.image_url}
                               alt={item.toy.name}
                               fill
                               className="object-cover"
@@ -196,7 +196,7 @@ export default function CartPage() {
                         <div className="flex-1">
                           <h3 className="text-lg font-semibold text-gray-900">{item.toy.name}</h3>
                           <p className="text-sm text-gray-600">{item.toy.brand}</p>
-                          <p className="text-sm text-primary-600">{item.toy.category} • {item.toy.ageGroup}</p>
+                          <p className="text-sm text-primary-600">{item.toy.category} • {item.toy.age_group}</p>
                         </div>
 
                         {/* Quantity Controls */}
@@ -204,6 +204,7 @@ export default function CartPage() {
                           <button
                             onClick={() => handleQuantityChange(item.toy.id, item.quantity - 1)}
                             className="p-1 rounded-full hover:bg-gray-100"
+                            disabled={loading}
                           >
                             <Minus className="h-4 w-4" />
                           </button>
@@ -211,6 +212,7 @@ export default function CartPage() {
                           <button
                             onClick={() => handleQuantityChange(item.toy.id, item.quantity + 1)}
                             className="p-1 rounded-full hover:bg-gray-100"
+                            disabled={loading}
                           >
                             <Plus className="h-4 w-4" />
                           </button>
@@ -232,6 +234,7 @@ export default function CartPage() {
                         <button
                           onClick={() => handleRemoveItem(item.toy.id)}
                           className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-full"
+                          disabled={loading}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -290,7 +293,7 @@ export default function CartPage() {
                   {/* Checkout Button */}
                   <button
                     onClick={handleCheckout}
-                    disabled={isProcessingPayment}
+                    disabled={isProcessingPayment || loading}
                     className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isProcessingPayment ? (

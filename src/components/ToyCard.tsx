@@ -33,12 +33,16 @@ export default function ToyCard({ toy }: ToyCardProps) {
 
   const handleAddToCart = async () => {
     setIsAdding(true);
-    addToCart(toy);
-    
-    // Simulate loading state
-    setTimeout(() => {
-      setIsAdding(false);
-    }, 500);
+    try {
+      await addToCart(toy);
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+    } finally {
+      // Simulate loading state for better UX
+      setTimeout(() => {
+        setIsAdding(false);
+      }, 500);
+    }
   };
 
   const toggleFavorite = () => {
@@ -49,9 +53,9 @@ export default function ToyCard({ toy }: ToyCardProps) {
     <div className="toy-card bg-white rounded-xl overflow-hidden group">
       {/* Image Container */}
       <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
-        {toy.imageUrl && !imageError ? (
+        {toy.image_url && !imageError ? (
           <Image
-            src={toy.imageUrl}
+            src={toy.image_url}
             alt={toy.name}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -78,7 +82,7 @@ export default function ToyCard({ toy }: ToyCardProps) {
 
         {/* Age Group Badge */}
         <div className="absolute top-3 left-3 bg-primary-600 text-white px-2 py-1 rounded-full text-xs font-medium">
-          {toy.ageGroup}
+          {toy.age_group}
         </div>
       </div>
 

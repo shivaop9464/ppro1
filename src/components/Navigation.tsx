@@ -9,17 +9,29 @@ import { useState, useEffect } from 'react';
 
 export default function Navigation() {
   const router = useRouter();
-  const { user, isAuthenticated, logout, loading } = useAuthStore();
-  const { getCartCount } = useCartStore();
+  const { user, isAuthenticated, logout, loading, initialize: initAuth } = useAuthStore();
+  const { getCartCount, initialize: initCart } = useCartStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   
   const cartCount = getCartCount();
 
-  // Ensure component only renders auth-dependent content after hydration
+  // Initialize auth and cart on component mount
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    const initialize = async () => {
+      await initAuth();
+      await initCart();
+      setMounted(true);
+    };
+    initialize();
+  }, [initAuth, initCart]);
+
+  // Re-initialize cart when auth state changes
+  useEffect(() => {
+    if (mounted) {
+      initCart();
+    }
+  }, [isAuthenticated, mounted, initCart]);
 
   const handleLogout = async () => {
     await logout();

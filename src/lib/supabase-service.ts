@@ -136,10 +136,14 @@ export class SupabaseService {
         toys (
           id,
           name,
-          price,
+          description,
+          age_group,
+          category,
           image_url,
           brand,
-          category
+          price,
+          stock,
+          tags
         )
       `)
       .eq('user_id', user.id)
@@ -402,8 +406,8 @@ export class SupabaseService {
   // ================== ADMIN METHODS ==================
   
   async isAdmin() {
-    const { data: profile } = await this.getCurrentUserProfile()
-    return profile?.is_admin || false
+    const result = await this.getCurrentUserProfile()
+    return result?.data?.is_admin || false
   }
 
   async getAllUsers() {

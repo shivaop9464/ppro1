@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 
 export default function Navigation() {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, loading } = useAuthStore();
   const { getCartCount } = useCartStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -21,8 +21,8 @@ export default function Navigation() {
     setMounted(true);
   }, []);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push('/');
     setIsMenuOpen(false);
   };
@@ -72,7 +72,13 @@ export default function Navigation() {
             </Link>
 
             {/* User Menu */}
-            {mounted && isAuthenticated ? (
+            {mounted && loading ? (
+              <div className="hidden md:flex items-center space-x-2">
+                {/* Loading skeleton */}
+                <div className="w-16 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
+                <div className="w-20 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
+              </div>
+            ) : mounted && isAuthenticated ? (
               <div className="relative group">
                 <button className="flex items-center space-x-2 text-gray-700 hover:text-primary-600">
                   <User className="h-6 w-6" />

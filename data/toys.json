@@ -1,0 +1,124 @@
+{
+  "toys": [
+    {
+      "id": "toy-001",
+      "name": "Building Blocks Set",
+      "description": "Colorful wooden building blocks to enhance creativity and motor skills",
+      "ageGroup": "0-2",
+      "category": "Educational",
+      "imageUrl": "/toys/building-blocks.jpg",
+      "brand": "EduToy",
+      "price": 299
+    },
+    {
+      "id": "toy-002",
+      "name": "Soft Plush Bear",
+      "description": "Cuddly soft bear perfect for comfort and emotional development",
+      "ageGroup": "0-2",
+      "category": "Comfort",
+      "imageUrl": "/toys/plush-bear.jpg",
+      "brand": "ComfortCo",
+      "price": 399
+    },
+    {
+      "id": "toy-003",
+      "name": "Musical Piano",
+      "description": "Colorful piano with lights and sounds to develop musical skills",
+      "ageGroup": "0-2",
+      "category": "Musical",
+      "imageUrl": "/toys/musical-piano.jpg",
+      "brand": "MusicMakers",
+      "price": 599
+    },
+    {
+      "id": "toy-004",
+      "name": "Shape Sorting Cube",
+      "description": "Interactive cube with different shapes to enhance problem-solving skills",
+      "ageGroup": "2-4",
+      "category": "Educational",
+      "imageUrl": "/toys/shape-sorter.jpg",
+      "brand": "LearnFun",
+      "price": 449
+    },
+    {
+      "id": "toy-005",
+      "name": "Play Kitchen Set",
+      "description": "Complete kitchen playset for imaginative role-playing",
+      "ageGroup": "2-4",
+      "category": "Role Play",
+      "imageUrl": "/toys/play-kitchen.jpg",
+      "brand": "PlayHome",
+      "price": 899
+    },
+    {
+      "id": "toy-006",
+      "name": "Art & Craft Kit",
+      "description": "Complete art supplies set with crayons, papers, and stickers",
+      "ageGroup": "2-4",
+      "category": "Creative",
+      "imageUrl": "/toys/art-kit.jpg",
+      "brand": "ArtisticKids",
+      "price": 349
+    },
+    {
+      "id": "toy-007",
+      "name": "Puzzle Adventure",
+      "description": "50-piece jigsaw puzzle featuring colorful animals and nature",
+      "ageGroup": "4-6",
+      "category": "Educational",
+      "imageUrl": "/toys/puzzle-adventure.jpg",
+      "brand": "PuzzlePro",
+      "price": 199
+    },
+    {
+      "id": "toy-008",
+      "name": "Remote Control Car",
+      "description": "Easy-to-use RC car with simple controls for young drivers",
+      "ageGroup": "4-6",
+      "category": "Vehicles",
+      "imageUrl": "/toys/rc-car.jpg",
+      "brand": "SpeedyToys",
+      "price": 799
+    },
+    {
+      "id": "toy-009",
+      "name": "Science Experiment Kit",
+      "description": "Safe and fun science experiments for curious young minds",
+      "ageGroup": "4-6",
+      "category": "STEM",
+      "imageUrl": "/toys/science-kit.jpg",
+      "brand": "ScienceWiz",
+      "price": 649
+    },
+    {
+      "id": "toy-010",
+      "name": "Board Game Collection",
+      "description": "Set of age-appropriate board games for family fun",
+      "ageGroup": "6+",
+      "category": "Games",
+      "imageUrl": "/toys/board-games.jpg",
+      "brand": "GameNight",
+      "price": 549
+    },
+    {
+      "id": "toy-011",
+      "name": "LEGO Architecture Set",
+      "description": "Advanced building set for creating architectural marvels",
+      "ageGroup": "6+",
+      "category": "Construction",
+      "imageUrl": "/toys/lego-architecture.jpg",
+      "brand": "LEGO",
+      "price": 999
+    },
+    {
+      "id": "toy-012",
+      "name": "Coding Robot",
+      "description": "Programmable robot to introduce kids to coding concepts",
+      "ageGroup": "6+",
+      "category": "STEM",
+      "imageUrl": "/toys/coding-robot.jpg",
+      "brand": "TechKids",
+      "price": 1299
+    }
+  ]
+}

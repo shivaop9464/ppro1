@@ -1,0 +1,52 @@
+{
+  "plans": [
+    {
+      "id": "basic",
+      "name": "Basic",
+      "toysPerMonth": 1,
+      "price": 1499,
+      "features": [
+        "1 toy per month",
+        "Age-appropriate selection",
+        "Free shipping & returns",
+        "Sanitized & safe toys",
+        "Flexible pausing"
+      ],
+      "popular": false
+    },
+    {
+      "id": "pro",
+      "name": "Pro",
+      "toysPerMonth": 3,
+      "price": 2999,
+      "features": [
+        "3 toys per month",
+        "Age-appropriate selection",
+        "Free shipping & returns",
+        "Sanitized & safe toys",
+        "Flexible pausing",
+        "Priority customer support",
+        "Educational activity guides"
+      ],
+      "popular": true
+    },
+    {
+      "id": "premium",
+      "name": "Premium",
+      "toysPerMonth": 5,
+      "price": 4499,
+      "features": [
+        "5 toys per month",
+        "Age-appropriate selection",
+        "Free shipping & returns",
+        "Sanitized & safe toys",
+        "Flexible pausing",
+        "Priority customer support",
+        "Educational activity guides",
+        "Exclusive premium toys",
+        "Dedicated toy consultant"
+      ],
+      "popular": false
+    }
+  ]
+}

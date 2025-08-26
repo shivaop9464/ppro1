@@ -291,7 +291,11 @@ BEGIN
   INSERT INTO public.users (id, name, email, is_admin)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
+    COALESCE(
+      NEW.raw_user_meta_data->>'full_name',
+      NEW.raw_user_meta_data->>'name', 
+      SPLIT_PART(NEW.email, '@', 1)
+    ),
     NEW.email,
     CASE WHEN NEW.email = 'admin@playpro.com' THEN true ELSE false END
   );

@@ -15,8 +15,9 @@ interface AuthState {
   isAuthenticated: boolean;
   loading: boolean;
   initialized: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  signup: (name: string, email: string, password: string) => Promise<boolean>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithFacebook: () => Promise<void>;
+  signInWithApple: () => Promise<void>;
   logout: () => Promise<void>;
   initialize: () => Promise<void>;
   checkSession: () => Promise<void>;
@@ -39,15 +40,15 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       
       if (session?.user) {
         // Get user profile from database
-        const { data: profile, error } = await supabaseService.getCurrentUserProfile();
+        const result = await supabaseService.getCurrentUserProfile();
         
-        if (profile && !error) {
+        if (result?.data && !result?.error) {
           set({
             user: {
-              id: profile.id,
-              name: profile.name,
-              email: profile.email,
-              isAdmin: profile.is_admin
+              id: result.data.id,
+              name: result.data.name,
+              email: result.data.email,
+              isAdmin: result.data.is_admin
             },
             isAuthenticated: true
           });
@@ -65,15 +66,15 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        const { data: profile, error } = await supabaseService.getCurrentUserProfile();
+        const result = await supabaseService.getCurrentUserProfile();
         
-        if (profile && !error) {
+        if (result?.data && !result?.error) {
           set({
             user: {
-              id: profile.id,
-              name: profile.name,
-              email: profile.email,
-              isAdmin: profile.is_admin
+              id: result.data.id,
+              name: result.data.name,
+              email: result.data.email,
+              isAdmin: result.data.is_admin
             },
             isAuthenticated: true
           });
@@ -87,89 +88,55 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
   
-  login: async (email: string, password: string) => {
+  signInWithGoogle: async () => {
     set({ loading: true });
     
     try {
-      const { data, error } = await supabaseService.signIn(email, password);
+      const { error } = await supabaseService.signInWithGoogle();
       
       if (error) {
-        console.error('Login error:', error.message);
-        set({ loading: false });
-        return false;
+        console.error('Google sign in error:', error.message);
       }
-      
-      if (data.user) {
-        // Get user profile
-        const { data: profile, error: profileError } = await supabaseService.getCurrentUserProfile();
-        
-        if (profile && !profileError) {
-          set({
-            user: {
-              id: profile.id,
-              name: profile.name,
-              email: profile.email,
-              isAdmin: profile.is_admin
-            },
-            isAuthenticated: true,
-            loading: false
-          });
-          return true;
-        }
-      }
-      
-      set({ loading: false });
-      return false;
+      // Note: The actual authentication will happen via redirect
+      // User state will be updated in the callback
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Google sign in error:', error);
+    } finally {
       set({ loading: false });
-      return false;
     }
   },
   
-  signup: async (name: string, email: string, password: string) => {
+  signInWithFacebook: async () => {
     set({ loading: true });
     
     try {
-      const { data, error } = await supabaseService.signUp(email, password, name);
+      const { error } = await supabaseService.signInWithFacebook();
       
       if (error) {
-        console.error('Signup error:', error.message);
-        set({ loading: false });
-        return false;
+        console.error('Facebook sign in error:', error.message);
       }
-      
-      if (data.user) {
-        // For development, we'll auto-confirm the user
-        // In production, you might want email confirmation
-        
-        // Wait a moment for the trigger to create the user profile
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Get the newly created profile
-        const { data: profile, error: profileError } = await supabaseService.getCurrentUserProfile();
-        
-        if (profile && !profileError) {
-          set({
-            user: {
-              id: profile.id,
-              name: profile.name,
-              email: profile.email,
-              isAdmin: profile.is_admin
-            },
-            isAuthenticated: true,
-            loading: false
-          });
-          return true;
-        }
-      }
-      
-      set({ loading: false });
-      return false;
+      // Note: The actual authentication will happen via redirect
     } catch (error) {
-      console.error('Signup error:', error);
+      console.error('Facebook sign in error:', error);
+    } finally {
       set({ loading: false });
-      return false;
+    }
+  },
+  
+  signInWithApple: async () => {
+    set({ loading: true });
+    
+    try {
+      const { error } = await supabaseService.signInWithApple();
+      
+      if (error) {
+        console.error('Apple sign in error:', error.message);
+      }
+      // Note: The actual authentication will happen via redirect
+    } catch (error) {
+      console.error('Apple sign in error:', error);
+    } finally {
+      set({ loading: false });
     }
   },
   

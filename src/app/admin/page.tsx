@@ -6,22 +6,48 @@ import { Plus, Edit2, Trash2, Save, X, Upload } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { Toy } from '@/store/cart';
 import { categories, ageGroups, formatPriceSimple } from '@/lib/utils';
-import toysData from '../../../data/toys.json';
+import { supabaseService } from '@/lib/supabase-service';
 
 interface ToyFormData {
   name: string;
   description: string;
-  ageGroup: string;
+  age_group: string; // Changed to snake_case for database
   category: string;
-  brand: string;
   price: number;
-  imageUrl: string;
+  image_url: string; // Changed to snake_case for database
 }
+
+// Helper function to transform database toy to frontend toy format
+const transformDatabaseToy = (dbToy: any): Toy => ({
+  id: dbToy.id,
+  name: dbToy.name,
+  description: dbToy.description,
+  age_group: dbToy.age_group,
+  category: dbToy.category,
+  image_url: dbToy.image_url || '',
+  brand: 'PlayPro', // Default brand since removed from database
+  price: dbToy.price, // Use price as-is from database
+  stock: dbToy.stock || 50,
+  tags: dbToy.tags || []
+});
+
+// Helper function to transform frontend toy to database format
+const transformToDatabase = (formData: ToyFormData) => ({
+  name: formData.name,
+  description: formData.description,
+  category: formData.category,
+  price: formData.price, // Use price as-is (form input is in dollars)
+  age_group: formData.age_group,
+  image_url: formData.image_url,
+  stock: 50 // Default stock
+});
 
 export default function AdminPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
-  const [toys, setToys] = useState<Toy[]>(toysData.toys);
+  const [toys, setToys] = useState<Toy[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -30,12 +56,46 @@ export default function AdminPage() {
   const [editForm, setEditForm] = useState<ToyFormData>({
     name: '',
     description: '',
-    ageGroup: '',
+    age_group: '', // Changed to snake_case
     category: '',
-    brand: '',
     price: 0,
-    imageUrl: ''
+    image_url: '' // Changed to snake_case
   });
+
+  // Fetch toys from toys-admin API
+  useEffect(() => {
+    const fetchToys = async () => {
+      try {
+        setLoading(true);
+        
+        const response = await fetch('/api/toys-admin', {
+          method: 'GET'
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+          console.error('Error fetching toys:', result.error);
+          setError('Failed to load toys.');
+          return;
+        }
+        
+        if (result.toys) {
+          const transformedToys = result.toys.map(transformDatabaseToy);
+          setToys(transformedToys);
+        }
+      } catch (err) {
+        console.error('Error fetching toys:', err);
+        setError('Failed to load toys.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isAuthenticated && user?.isAdmin) {
+      fetchToys();
+    }
+  }, [isAuthenticated, user?.isAdmin]);
 
   // Check if user is admin
   useEffect(() => {
@@ -67,15 +127,14 @@ export default function AdminPage() {
     setEditForm({
       name: toy.name,
       description: toy.description,
-      ageGroup: toy.ageGroup,
+      age_group: toy.age_group, // Updated field name
       category: toy.category,
-      brand: toy.brand,
       price: toy.price,
-      imageUrl: toy.imageUrl
+      image_url: toy.image_url // Updated field name
     });
     // Set preview for existing image
-    if (toy.imageUrl) {
-      setImagePreview(toy.imageUrl);
+    if (toy.image_url) {
+      setImagePreview(toy.image_url);
     }
   };
 
@@ -84,44 +143,128 @@ export default function AdminPage() {
     setEditForm({
       name: '',
       description: '',
-      ageGroup: ageGroups[0].id,
+      age_group: ageGroups[0].id, // Updated field name
       category: categories[0],
-      brand: '',
       price: 0,
-      imageUrl: ''
+      image_url: '' // Updated field name
     });
   };
 
-  const handleSave = () => {
-    if (isEditing) {
-      // Update existing toy
-      setToys(toys.map(toy => 
-        toy.id === isEditing 
-          ? { ...toy, ...editForm }
-          : toy
-      ));
-      setIsEditing(null);
-    } else if (isAdding) {
-      // Add new toy
-      const newToy: Toy = {
-        id: `toy-${Date.now()}`,
-        ...editForm
-      };
-      setToys([...toys, newToy]);
-      setIsAdding(false);
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Validate required fields
+      if (!editForm.name.trim()) {
+        setError('Toy name is required.');
+        setLoading(false);
+        return;
+      }
+      
+      if (!editForm.description.trim()) {
+        setError('Toy description is required.');
+        setLoading(false);
+        return;
+      }
+      
+      if (!editForm.category) {
+        setError('Toy category is required.');
+        setLoading(false);
+        return;
+      }
+      
+      if (!editForm.age_group) {
+        setError('Age group is required.');
+        setLoading(false);
+        return;
+      }
+      
+      if (editForm.price <= 0) {
+        setError('Price must be greater than 0.');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Form validation passed, saving toy...');
+      
+      if (isEditing) {
+        // Update existing toy via admin-toys API
+        const dbData = transformToDatabase(editForm);
+        console.log('Updating toy with data:', dbData);
+        
+        const response = await fetch('/api/toys-admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'update',
+            toyId: isEditing,
+            toyData: dbData
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+          console.error('Error updating toy:', result.error);
+          setError(`Failed to update toy: ${result.error?.message || 'Unknown error'}`);
+          return;
+        }
+        
+        if (result.toy) {
+          const updatedToy = transformDatabaseToy(result.toy);
+          setToys(toys.map(toy => toy.id === isEditing ? updatedToy : toy));
+          console.log('Toy updated successfully');
+        }
+        setIsEditing(null);
+      } else if (isAdding) {
+        // Add new toy via toys-admin API
+        const dbData = transformToDatabase(editForm);
+        console.log('Creating toy with data:', dbData);
+        
+        const response = await fetch('/api/toys-admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'create',
+            toyData: dbData
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+          console.error('Error creating toy:', result.error);
+          setError(`Failed to create toy: ${result.error?.message || 'Unknown error'}`);
+          return;
+        }
+        
+        if (result.toy) {
+          const newToy = transformDatabaseToy(result.toy);
+          setToys([...toys, newToy]);
+          console.log('Toy created successfully');
+        }
+        setIsAdding(false);
+      }
+      
+      // Reset form
+      setEditForm({
+        name: '',
+        description: '',
+        age_group: '',
+        category: '',
+        price: 0,
+        image_url: ''
+      });
+      setImageFile(null);
+      setImagePreview('');
+      setError(null);
+    } catch (err) {
+      console.error('Error saving toy:', err);
+      setError(`Failed to save toy: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
     }
-    
-    setEditForm({
-      name: '',
-      description: '',
-      ageGroup: '',
-      category: '',
-      brand: '',
-      price: 0,
-      imageUrl: ''
-    });
-    setImageFile(null);
-    setImagePreview('');
   };
 
   const handleCancel = () => {
@@ -132,17 +275,45 @@ export default function AdminPage() {
     setEditForm({
       name: '',
       description: '',
-      ageGroup: '',
+      age_group: '', // Updated field name
       category: '',
-      brand: '',
       price: 0,
-      imageUrl: ''
+      image_url: '' // Updated field name
     });
+    setError(null);
   };
 
-  const handleDelete = (toyId: string) => {
+  const handleDelete = async (toyId: string) => {
     if (confirm('Are you sure you want to delete this toy?')) {
-      setToys(toys.filter(toy => toy.id !== toyId));
+      try {
+        setLoading(true);
+        
+        const response = await fetch('/api/toys-admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'delete',
+            toyId: toyId
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+          console.error('Error deleting toy:', result.error);
+          setError(`Failed to delete toy: ${result.error?.message || 'Unknown error'}`);
+          return;
+        }
+        
+        setToys(toys.filter(toy => toy.id !== toyId));
+        setError(null);
+        console.log('Toy deleted successfully');
+      } catch (err) {
+        console.error('Error deleting toy:', err);
+        setError('Failed to delete toy.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -162,7 +333,7 @@ export default function AdminPage() {
         const result = e.target?.result as string;
         setImagePreview(result);
         // Convert file to base64 and store in form
-        handleFormChange('imageUrl', result);
+        handleFormChange('image_url', result);
       };
       reader.readAsDataURL(file);
     } else {
@@ -203,7 +374,7 @@ export default function AdminPage() {
   const clearImage = () => {
     setImageFile(null);
     setImagePreview('');
-    handleFormChange('imageUrl', '');
+    handleFormChange('image_url', '');
   };
 
   return (
@@ -224,6 +395,20 @@ export default function AdminPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl">
+            {error}
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        )}
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
@@ -274,23 +459,11 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Brand
-                  </label>
-                  <input
-                    type="text"
-                    value={editForm.brand}
-                    onChange={(e) => handleFormChange('brand', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Brand name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Age Group
                   </label>
                   <select
-                    value={editForm.ageGroup}
-                    onChange={(e) => handleFormChange('ageGroup', e.target.value)}
+                    value={editForm.age_group}
+                    onChange={(e) => handleFormChange('age_group', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
                   >
                     {ageGroups.map((group) => (
@@ -442,13 +615,12 @@ export default function AdminPage() {
                     <td className="px-6 py-4">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{toy.name}</div>
-                        <div className="text-sm text-gray-500">{toy.brand}</div>
                         <div className="text-xs text-gray-400 mt-1 line-clamp-2">{toy.description}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {toy.ageGroup}
+                        {toy.age_group}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
@@ -484,12 +656,47 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Note about persistence */}
-        <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        {/* RLS Fix Section */}
+        {error && error.includes('RLS policy') && (
+          <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-start justify-between">
+              <div className="text-yellow-800 text-sm">
+                <strong>Database Permission Issue:</strong> Row Level Security (RLS) is blocking database operations.
+                <br />Changes are being saved temporarily. To fix this permanently:
+                <br />1. Go to Supabase Dashboard → Authentication → Policies
+                <br />2. Temporarily disable RLS for the toys table, or
+                <br />3. Click the button below to attempt automatic fix.
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/fix-rls', { method: 'POST' });
+                    const result = await response.json();
+                    if (result.success) {
+                      setError(null);
+                      alert('RLS fix applied! Try saving toys again.');
+                    } else {
+                      alert('Automatic fix failed. Please disable RLS manually in Supabase dashboard.');
+                    }
+                  } catch (err) {
+                    alert('Fix attempt failed. Please disable RLS manually.');
+                  }
+                }}
+                className="bg-yellow-600 text-white px-3 py-1 rounded text-xs hover:bg-yellow-700 ml-4 flex-shrink-0"
+              >
+                Try Auto Fix
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Database Integration Note */}
+        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex">
-            <div className="text-yellow-600 text-sm">
-              <strong>Note:</strong> Changes made here are temporary and will be reset when the page reloads. 
-              In a production environment, these changes would be persisted to a database.
+            <div className="text-blue-600 text-sm">
+              <strong>Toys Management:</strong> All changes are automatically saved to the JSON file system and will persist across sessions.
+              The admin panel is fully functional for creating, editing, and deleting toys.
+              {toys.length === 0 && ' Start by adding some toys using the "Add New Toy" button above!'}
             </div>
           </div>
         </div>

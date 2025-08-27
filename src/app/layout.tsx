@@ -4,7 +4,12 @@ import './globals.css'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  fallback: ['system-ui', 'arial'],
+  variable: '--font-inter'
+})
 
 export const metadata: Metadata = {
   title: 'PlayPro - Toy Subscription Service',
@@ -19,7 +24,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
+      <body className={`${inter.className} ${inter.variable} font-sans`}>
         <div className="min-h-screen flex flex-col">
           <Navigation />
           <main className="flex-1">

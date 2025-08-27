@@ -6,16 +6,65 @@ import { Filter, Search } from 'lucide-react';
 import ToyCard from '@/components/ToyCard';
 import { Toy } from '@/store/cart';
 import { ageGroups, categories } from '@/lib/utils';
-import toysData from '../../../data/toys.json';
+import { supabaseService } from '@/lib/supabase-service';
+
+// Helper function to transform database toy to frontend toy format
+const transformDatabaseToy = (dbToy: any): Toy => ({
+  id: dbToy.id,
+  name: dbToy.name,
+  description: dbToy.description,
+  age_group: dbToy.age_group,
+  category: dbToy.category,
+  image_url: dbToy.image_url || '',
+  brand: dbToy.brand || 'PlayPro',
+  price: dbToy.price, // Use price as-is (no conversion)
+  stock: dbToy.stock,
+  tags: dbToy.tags
+});
 
 export default function ToysPage() {
   const searchParams = useSearchParams();
-  const [toys] = useState<Toy[]>(toysData.toys);
-  const [filteredToys, setFilteredToys] = useState<Toy[]>(toys);
+  const [toys, setToys] = useState<Toy[]>([]);
+  const [filteredToys, setFilteredToys] = useState<Toy[]>([]);
   const [selectedAgeGroup, setSelectedAgeGroup] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch toys from toys-admin API
+  useEffect(() => {
+    const fetchToys = async () => {
+      try {
+        setLoading(true);
+        
+        const response = await fetch('/api/toys-admin', {
+          method: 'GET'
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+          console.error('Error fetching toys:', result.error);
+          setError('Failed to load toys. Please try again later.');
+          return;
+        }
+        
+        if (result.toys) {
+          const transformedToys = result.toys.map(transformDatabaseToy);
+          setToys(transformedToys);
+        }
+      } catch (err) {
+        console.error('Error fetching toys:', err);
+        setError('Failed to load toys. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchToys();
+  }, []);
 
   // Initialize age group from URL params
   useEffect(() => {
@@ -31,7 +80,7 @@ export default function ToysPage() {
 
     // Filter by age group
     if (selectedAgeGroup !== 'all') {
-      filtered = filtered.filter(toy => toy.ageGroup === selectedAgeGroup);
+      filtered = filtered.filter(toy => toy.age_group === selectedAgeGroup);
     }
 
     // Filter by category
@@ -225,7 +274,24 @@ export default function ToysPage() {
             </div>
 
             {/* Toys Grid */}
-            {filteredToys.length > 0 ? (
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading toys...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">⚠️</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Toys</h3>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : filteredToys.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredToys.map((toy) => (
                   <ToyCard key={toy.id} toy={toy} />
@@ -236,7 +302,10 @@ export default function ToysPage() {
                 <div className="text-6xl mb-4">🔍</div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">No toys found</h3>
                 <p className="text-gray-600 mb-4">
-                  Try adjusting your filters or search terms
+                  {toys.length === 0 
+                    ? 'No toys available in the database yet.'
+                    : 'Try adjusting your filters or search terms'
+                  }
                 </p>
                 <button
                   onClick={clearFilters}

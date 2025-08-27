@@ -115,7 +115,7 @@ export default function Footer() {
 
         <div className="mt-8 pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">
-            © 2024 PlayPro. All rights reserved.
+            © 2025 PlayPro. All rights reserved.
           </p>
           <p className="text-gray-400 text-sm mt-4 md:mt-0">
             Made with ❤️ for children everywhere

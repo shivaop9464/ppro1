@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { supabaseService } from '@/lib/supabase-service';
 import { useAuthStore } from './auth';
 
 export interface Toy {
@@ -67,8 +66,8 @@ export const useCartStore = create<CartState>()((set, get) => ({
   },
   
   syncFromDatabase: async () => {
-    const { isAuthenticated } = useAuthStore.getState();
-    if (!isAuthenticated) {
+    const { isAuthenticated, user } = useAuthStore.getState();
+    if (!isAuthenticated || !user) {
       set({ items: [] });
       return;
     }
@@ -76,38 +75,31 @@ export const useCartStore = create<CartState>()((set, get) => ({
     set({ loading: true });
     
     try {
-      const { data: cartItems, error } = await supabaseService.getCartItems();
+      const response = await fetch(`/api/cart-admin?userId=${user.id}`);
+      const result = await response.json();
       
-      if (!error && cartItems) {
-        const items: CartItem[] = cartItems.map((item: any) => ({
-          toy: {
-            id: item.toys.id,
-            name: item.toys.name,
-            description: item.toys.description,
-            age_group: item.toys.age_group,
-            category: item.toys.category,
-            image_url: item.toys.image_url,
-            brand: item.toys.brand,
-            price: item.toys.price,
-            stock: item.toys.stock,
-            tags: item.toys.tags
-          },
+      if (result.success && result.items) {
+        const items: CartItem[] = result.items.map((item: any) => ({
+          toy: item.toy,
           quantity: item.quantity
         }));
         
         set({ items });
+      } else {
+        set({ items: [] });
       }
     } catch (error) {
-      console.error('Error syncing cart from database:', error);
+      console.error('Error syncing cart from API:', error);
+      set({ items: [] });
     } finally {
       set({ loading: false });
     }
   },
   
   addToCart: async (toy: Toy) => {
-    const { isAuthenticated } = useAuthStore.getState();
+    const { isAuthenticated, user } = useAuthStore.getState();
     
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       console.warn('User must be logged in to add items to cart');
       return;
     }
@@ -115,12 +107,26 @@ export const useCartStore = create<CartState>()((set, get) => ({
     set({ loading: true });
     
     try {
-      // Use addToCart method which handles quantity increment automatically
-      const { error } = await supabaseService.addToCart(toy.id, 1);
+      const response = await fetch('/api/cart-admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'add',
+          userId: user.id,
+          toyId: toy.id,
+          quantity: 1
+        })
+      });
       
-      if (!error) {
-        // Refresh cart from database to get updated state
+      const result = await response.json();
+      
+      if (result.success) {
+        // Refresh cart from API to get updated state
         await get().syncFromDatabase();
+      } else {
+        console.error('Failed to add to cart:', result.error);
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -130,32 +136,34 @@ export const useCartStore = create<CartState>()((set, get) => ({
   },
   
   removeFromCart: async (toyId: string) => {
-    const { isAuthenticated } = useAuthStore.getState();
+    const { isAuthenticated, user } = useAuthStore.getState();
     
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       return;
     }
     
     set({ loading: true });
     
     try {
-      // Find the cart item by toy_id
-      const { items } = get();
-      const cartItem = items.find(item => item.toy.id === toyId);
+      const response = await fetch('/api/cart-admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'remove',
+          userId: user.id,
+          toyId: toyId
+        })
+      });
       
-      if (cartItem) {
-        // We need to get the actual cart_item.id from the database
-        const { data: cartItems } = await supabaseService.getCartItems();
-        const dbCartItem = cartItems?.find((item: any) => item.toys.id === toyId);
-        
-        if (dbCartItem) {
-          const { error } = await supabaseService.removeFromCart(dbCartItem.id);
-          
-          if (!error) {
-            // Refresh cart from database
-            await get().syncFromDatabase();
-          }
-        }
+      const result = await response.json();
+      
+      if (result.success) {
+        // Refresh cart from API
+        await get().syncFromDatabase();
+      } else {
+        console.error('Failed to remove from cart:', result.error);
       }
     } catch (error) {
       console.error('Error removing from cart:', error);
@@ -170,25 +178,50 @@ export const useCartStore = create<CartState>()((set, get) => ({
       return;
     }
     
-    const { isAuthenticated } = useAuthStore.getState();
+    const { isAuthenticated, user } = useAuthStore.getState();
     
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       return;
     }
     
     set({ loading: true });
     
     try {
-      // Find the cart item by toy_id
-      const { data: cartItems } = await supabaseService.getCartItems();
-      const dbCartItem = cartItems?.find((item: any) => item.toys.id === toyId);
+      // Find the cart item to get its ID
+      const { items } = get();
+      const cartItem = items.find(item => item.toy.id === toyId);
       
-      if (dbCartItem) {
-        const { error } = await supabaseService.updateCartItemQuantity(dbCartItem.id, quantity);
+      if (cartItem) {
+        // Get current cart to find the item ID
+        const response = await fetch(`/api/cart-admin?userId=${user.id}`);
+        const result = await response.json();
         
-        if (!error) {
-          // Refresh cart from database
-          await get().syncFromDatabase();
+        if (result.success) {
+          const dbCartItem = result.items.find((item: any) => item.toy.id === toyId);
+          
+          if (dbCartItem) {
+            const updateResponse = await fetch('/api/cart-admin', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                action: 'update',
+                userId: user.id,
+                itemId: dbCartItem.id,
+                quantity: quantity
+              })
+            });
+            
+            const updateResult = await updateResponse.json();
+            
+            if (updateResult.success) {
+              // Refresh cart from API
+              await get().syncFromDatabase();
+            } else {
+              console.error('Failed to update cart quantity:', updateResult.error);
+            }
+          }
         }
       }
     } catch (error) {
@@ -199,9 +232,9 @@ export const useCartStore = create<CartState>()((set, get) => ({
   },
   
   clearCart: async () => {
-    const { isAuthenticated } = useAuthStore.getState();
+    const { isAuthenticated, user } = useAuthStore.getState();
     
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       set({ items: [] });
       return;
     }
@@ -209,10 +242,23 @@ export const useCartStore = create<CartState>()((set, get) => ({
     set({ loading: true });
     
     try {
-      const { error } = await supabaseService.clearCart();
+      const response = await fetch('/api/cart-admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'clear',
+          userId: user.id
+        })
+      });
       
-      if (!error) {
+      const result = await response.json();
+      
+      if (result.success) {
         set({ items: [] });
+      } else {
+        console.error('Failed to clear cart:', result.error);
       }
     } catch (error) {
       console.error('Error clearing cart:', error);

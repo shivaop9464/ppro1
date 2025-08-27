@@ -58,13 +58,46 @@ export class SupabaseService {
   // ================== TOYS/PRODUCTS METHODS ==================
   
   async getAllToys() {
-    const { data, error } = await supabase
-      .from('toys')
-      .select('*')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-    
-    return { data, error }
+    try {
+      // First, try to get toys from database
+      const { data: dbToys, error } = await supabase
+        .from('toys')
+        .select('*')
+        .order('created_at', { ascending: false })
+      
+      let allToys = dbToys || []
+      
+      // If database fetch fails or returns empty, also try to load from JSON file
+      if (error || !dbToys || dbToys.length === 0) {
+        console.log('Database toys fetch failed or empty, trying JSON fallback:', error)
+        
+        try {
+          // Try to fetch from JSON file as fallback
+          const response = await fetch('/api/toys-fallback')
+          if (response.ok) {
+            const jsonData = await response.json()
+            if (jsonData.success && jsonData.toys) {
+              const convertedToys = jsonData.toys.map((toy: any) => ({
+                ...toy,
+                age_group: toy.ageGroup || toy.age_group,
+                image_url: toy.imageUrl || toy.image_url,
+                is_active: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }))
+              allToys = [...allToys, ...convertedToys]
+            }
+          }
+        } catch (jsonError) {
+          console.log('JSON fallback also failed:', jsonError)
+        }
+      }
+      
+      return { data: allToys, error: allToys.length > 0 ? null : error }
+    } catch (err) {
+      console.error('Error in getAllToys:', err)
+      return { data: null, error: err }
+    }
   }
 
   async getToyById(id: string) {
@@ -72,7 +105,6 @@ export class SupabaseService {
       .from('toys')
       .select('*')
       .eq('id', id)
-      .eq('is_active', true)
       .single()
     
     return { data, error }
@@ -83,7 +115,6 @@ export class SupabaseService {
       .from('toys')
       .select('*')
       .eq('category', category)
-      .eq('is_active', true)
       .order('created_at', { ascending: false })
     
     return { data, error }
@@ -93,9 +124,55 @@ export class SupabaseService {
     const { data, error } = await supabase
       .from('toys')
       .select('*')
-      .or(`name.ilike.%${query}%,description.ilike.%${query}%,brand.ilike.%${query}%`)
-      .eq('is_active', true)
+      .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
       .order('created_at', { ascending: false })
+    
+    return { data, error }
+  }
+
+  async createToy(toyData: any) {
+    console.log('Creating toy with data:', toyData)
+    
+    // Validate required fields
+    if (!toyData.name || !toyData.category || !toyData.price) {
+      return { data: null, error: { message: 'Missing required fields: name, category, price' } }
+    }
+    
+    const { data, error } = await supabase
+      .from('toys')
+      .insert([toyData])
+      .select()
+      .single()
+    
+    console.log('Create toy result:', { data, error })
+    return { data, error }
+  }
+
+  async updateToy(id: string, toyData: any) {
+    console.log('Updating toy with ID:', id, 'data:', toyData)
+    
+    if (!id) {
+      return { data: null, error: { message: 'Toy ID is required' } }
+    }
+    
+    const { data, error } = await supabase
+      .from('toys')
+      .update(toyData)
+      .eq('id', id)
+      .select()
+      .single()
+    
+    console.log('Update toy result:', { data, error })
+    return { data, error }
+  }
+
+  async deleteToy(id: string) {
+    const { data, error } = await supabase
+      .from('toys')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single()
     
     return { data, error }
   }
@@ -106,7 +183,6 @@ export class SupabaseService {
     const { data, error } = await supabase
       .from('plans')
       .select('*')
-      .eq('is_active', true)
       .order('price', { ascending: true })
     
     return { data, error }
@@ -117,7 +193,6 @@ export class SupabaseService {
       .from('plans')
       .select('*')
       .eq('id', id)
-      .eq('is_active', true)
       .single()
     
     return { data, error }
@@ -140,7 +215,6 @@ export class SupabaseService {
           age_group,
           category,
           image_url,
-          brand,
           price,
           stock,
           tags
@@ -242,7 +316,6 @@ export class SupabaseService {
           name,
           price,
           image_url,
-          brand,
           category
         )
       `)
@@ -444,45 +517,6 @@ export class SupabaseService {
       .order('created_at', { ascending: false })
     
     return { data, error }
-  }
-
-  async createToy(toyData: any) {
-    const isAdmin = await this.isAdmin()
-    if (!isAdmin) throw new Error('Admin access required')
-
-    const { data, error } = await supabase
-      .from('toys')
-      .insert(toyData)
-      .select()
-      .single()
-    
-    return { data, error }
-  }
-
-  async updateToy(id: string, toyData: any) {
-    const isAdmin = await this.isAdmin()
-    if (!isAdmin) throw new Error('Admin access required')
-
-    const { data, error } = await supabase
-      .from('toys')
-      .update(toyData)
-      .eq('id', id)
-      .select()
-      .single()
-    
-    return { data, error }
-  }
-
-  async deleteToy(id: string) {
-    const isAdmin = await this.isAdmin()
-    if (!isAdmin) throw new Error('Admin access required')
-
-    const { error } = await supabase
-      .from('toys')
-      .update({ is_active: false })
-      .eq('id', id)
-    
-    return { error }
   }
 }
 

@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Transform JSON data to match database schema
-    const toysForDatabase = toysData.toys.map(toy => ({
+    const toysForDatabase = toysData.toys.map((toy: any) => ({
       name: toy.name,
       description: toy.description,
       category: toy.category,

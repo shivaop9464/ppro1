@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Filter, Search } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Filter, Search, ShoppingBag } from 'lucide-react';
 import ToyCard from '@/components/ToyCard';
-import { Toy } from '@/store/cart';
+import { Toy, useCartStore } from '@/store/cart';
 import { ageGroups, categories } from '@/lib/utils';
 import { supabaseService } from '@/lib/supabase-service';
 
@@ -32,6 +32,14 @@ export default function ToysPage() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { selectedPlan, items, selectPlan } = useCartStore();
+  const router = useRouter();
+  
+  // Check if user came through plans page
+  const cameFromPlans = !!(
+    searchParams.get('plan') && 
+    searchParams.get('toysPerMonth')
+  );
 
   // Fetch toys from toys-admin API
   useEffect(() => {
@@ -66,6 +74,72 @@ export default function ToysPage() {
     fetchToys();
   }, []);
 
+  // Initialize plan from URL params
+  useEffect(() => {
+    const planParam = searchParams.get('plan');
+    const toysPerMonthParam = searchParams.get('toysPerMonth');
+    
+    if (planParam && toysPerMonthParam) {
+      // Fetch the actual plan data from the API
+      const fetchAndSetPlan = async () => {
+        try {
+          const response = await fetch('/api/plans');
+          const data = await response.json();
+          
+          // Find the selected plan in the plans data
+          const planData = data.plans.find((p: any) => p.id === planParam);
+          
+          if (planData) {
+            // Add deposit amount based on plan price
+            let planWithDeposit = { ...planData };
+            
+            if (planWithDeposit.price === 699) {
+              planWithDeposit.deposit_amount = 1000;
+            } else if (planWithDeposit.price === 1299) {
+              planWithDeposit.deposit_amount = 3000;
+            } else if (planWithDeposit.price === 2199) {
+              planWithDeposit.deposit_amount = 6000;
+            }
+            
+            // Set the plan in the cart store
+            selectPlan(planWithDeposit);
+          } else {
+            // Fallback to creating a plan object based on URL parameters
+            const planFromUrl = {
+              id: planParam,
+              name: planParam.charAt(0).toUpperCase() + planParam.slice(1),
+              toysPerMonth: parseInt(toysPerMonthParam),
+              price: 0, // Will be updated when user goes to cart
+              features: [],
+              popular: false,
+              deposit_amount: 0
+            };
+            
+            // Set the plan in the cart store
+            selectPlan(planFromUrl);
+          }
+        } catch (error) {
+          console.error('Error fetching plan data:', error);
+          // Fallback to creating a plan object based on URL parameters
+          const planFromUrl = {
+            id: planParam,
+            name: planParam.charAt(0).toUpperCase() + planParam.slice(1),
+            toysPerMonth: parseInt(toysPerMonthParam),
+            price: 0,
+            features: [],
+            popular: false,
+            deposit_amount: 0
+          };
+          
+          // Set the plan in the cart store
+          selectPlan(planFromUrl);
+        }
+      };
+      
+      fetchAndSetPlan();
+    }
+  }, [searchParams, selectPlan]);
+
   // Initialize age group from URL params
   useEffect(() => {
     const ageParam = searchParams.get('age');
@@ -97,6 +171,9 @@ export default function ToysPage() {
       );
     }
 
+    // NOTE: Removed the limiting logic that was causing only some toys to display
+    // All toys should be displayed, with selection limits enforced in the UI
+
     setFilteredToys(filtered);
   }, [toys, selectedAgeGroup, selectedCategory, searchQuery]);
 
@@ -123,9 +200,15 @@ export default function ToysPage() {
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
               Toy Catalog
             </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Discover amazing toys curated for every age and interest
-            </p>
+            {selectedPlan ? (
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                Select up to {selectedPlan.toysPerMonth} toy{selectedPlan.toysPerMonth !== 1 ? 's' : ''} per month with your {selectedPlan.name} plan
+              </p>
+            ) : (
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                All toys are free with your subscription
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -292,11 +375,30 @@ export default function ToysPage() {
                 </button>
               </div>
             ) : filteredToys.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredToys.map((toy) => (
-                  <ToyCard key={toy.id} toy={toy} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredToys.map((toy) => (
+                    <ToyCard 
+                      key={toy.id} 
+                      toy={toy} 
+                      isPlanSelection={cameFromPlans || !!selectedPlan} 
+                    />
+                  ))}
+                </div>
+                
+                {/* Proceed to Cart Button - only show when toys are selected and plan is selected */}
+                {selectedPlan && items.length > 0 && (
+                  <div className="mt-8 flex justify-center">
+                    <button
+                      onClick={() => router.push('/cart')}
+                      className="bg-primary-600 text-white px-8 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium text-lg flex items-center gap-2"
+                    >
+                      <ShoppingBag className="h-5 w-5" />
+                      Proceed to Cart ({items.length} {items.length === 1 ? 'toy' : 'toys'} selected)
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">🔍</div>

@@ -137,6 +137,19 @@ The application comes with pre-configured demo accounts:
 
 *Note: These accounts are automatically created when you first visit the login page.*
 
+## 🔐 Social Login (Google)
+
+The application supports Google social login through Clerk authentication:
+
+1. Visit the [Clerk Dashboard](https://dashboard.clerk.com/)
+2. Select your application
+3. Go to "User & Authentication" > "Social Connections"
+4. Enable Google and configure OAuth credentials
+5. Disable other social providers if you only want Google
+6. Add your domain to the allowed redirect URLs
+
+For detailed setup instructions, visit `/social-login-setup` after starting the development server.
+
 ## 📞 Contact Information
 
 The application includes a contact page with:

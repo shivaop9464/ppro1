@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit2, Trash2, Save, X, Upload } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, Edit2, Trash2, Save, X, Upload, Package, ShoppingBag } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { Toy } from '@/store/cart';
 import { categories, ageGroups, formatPriceSimple } from '@/lib/utils';
 import { supabaseService } from '@/lib/supabase-service';
+import LoginButton from '@/components/LoginButton';
 
 interface ToyFormData {
   name: string;
@@ -15,6 +17,7 @@ interface ToyFormData {
   category: string;
   price: number;
   image_url: string; // Changed to snake_case for database
+  is_free_with_subscription: boolean; // New field for free with subscription
 }
 
 // Helper function to transform database toy to frontend toy format
@@ -28,23 +31,31 @@ const transformDatabaseToy = (dbToy: any): Toy => ({
   brand: 'PlayPro', // Default brand since removed from database
   price: dbToy.price, // Use price as-is from database
   stock: dbToy.stock || 50,
-  tags: dbToy.tags || []
+  tags: dbToy.tags || (dbToy.is_free_with_subscription ? ['free-with-subscription'] : []) // Add tag if free
 });
 
 // Helper function to transform frontend toy to database format
-const transformToDatabase = (formData: ToyFormData) => ({
-  name: formData.name,
-  description: formData.description,
-  category: formData.category,
-  price: formData.price, // Use price as-is (form input is in dollars)
-  age_group: formData.age_group,
-  image_url: formData.image_url,
-  stock: 50 // Default stock
-});
+const transformToDatabase = (formData: ToyFormData) => {
+  // Add free-with-subscription tag if needed
+  const tags = formData.is_free_with_subscription 
+    ? ['free-with-subscription'] 
+    : [];
+  
+  return {
+    name: formData.name,
+    description: formData.description,
+    category: formData.category,
+    price: formData.is_free_with_subscription ? 0 : formData.price, // Set price to 0 if free
+    age_group: formData.age_group,
+    image_url: formData.image_url,
+    stock: 50, // Default stock
+    tags: tags.length > 0 ? tags : undefined // Only include tags if there are any
+  };
+};
 
 export default function AdminPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
   const [toys, setToys] = useState<Toy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +70,8 @@ export default function AdminPage() {
     age_group: '', // Changed to snake_case
     category: '',
     price: 0,
-    image_url: '' // Changed to snake_case
+    image_url: '', // Changed to snake_case
+    is_free_with_subscription: false // Initialize new field
   });
 
   // Fetch toys from toys-admin API
@@ -111,17 +123,13 @@ export default function AdminPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
           <p className="text-gray-600 mb-4">You need admin privileges to access this page.</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
-          >
-            Go to Login
-          </button>
+          <LoginButton />
         </div>
       </div>
     );
   }
 
+  // Handle edit click
   const handleEditClick = (toy: Toy) => {
     setIsEditing(toy.id);
     setEditForm({
@@ -130,7 +138,8 @@ export default function AdminPage() {
       age_group: toy.age_group, // Updated field name
       category: toy.category,
       price: toy.price,
-      image_url: toy.image_url // Updated field name
+      image_url: toy.image_url, // Updated field name
+      is_free_with_subscription: toy.tags?.includes('free-with-subscription') || false // Set based on tags
     });
     // Set preview for existing image
     if (toy.image_url) {
@@ -146,10 +155,20 @@ export default function AdminPage() {
       age_group: ageGroups[0].id, // Updated field name
       category: categories[0],
       price: 0,
-      image_url: '' // Updated field name
+      image_url: '', // Updated field name
+      is_free_with_subscription: false // Initialize new field
     });
   };
 
+  // Handle form change
+  const handleFormChange = (field: keyof ToyFormData, value: string | number | boolean) => {
+    setEditForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Handle save
   const handleSave = async () => {
     try {
       setLoading(true);
@@ -180,7 +199,8 @@ export default function AdminPage() {
         return;
       }
       
-      if (editForm.price <= 0) {
+      // Only validate price if not free with subscription
+      if (!editForm.is_free_with_subscription && editForm.price <= 0) {
         setError('Price must be greater than 0.');
         setLoading(false);
         return;
@@ -254,7 +274,8 @@ export default function AdminPage() {
         age_group: '',
         category: '',
         price: 0,
-        image_url: ''
+        image_url: '',
+        is_free_with_subscription: false
       });
       setImageFile(null);
       setImagePreview('');
@@ -267,6 +288,7 @@ export default function AdminPage() {
     }
   };
 
+  // Handle cancel
   const handleCancel = () => {
     setIsEditing(null);
     setIsAdding(false);
@@ -278,7 +300,8 @@ export default function AdminPage() {
       age_group: '', // Updated field name
       category: '',
       price: 0,
-      image_url: '' // Updated field name
+      image_url: '', // Updated field name
+      is_free_with_subscription: false // Reset new field
     });
     setError(null);
   };
@@ -315,13 +338,6 @@ export default function AdminPage() {
         setLoading(false);
       }
     }
-  };
-
-  const handleFormChange = (field: keyof ToyFormData, value: string | number) => {
-    setEditForm(prev => ({
-      ...prev,
-      [field]: value
-    }));
   };
 
   // Handle file upload
@@ -387,8 +403,26 @@ export default function AdminPage() {
               <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
               <p className="text-gray-600 mt-1">Manage toys and subscription plans</p>
             </div>
-            <div className="text-sm text-gray-500">
-              Welcome, {user?.name}
+            <div className="flex items-center gap-4">
+              <Link
+                href="/admin/orders"
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
+                <Package className="h-4 w-4" />
+                Orders
+              </Link>
+              <div className="text-sm text-gray-500">
+                Welcome, {user?.name}
+              </div>
+              <button
+                onClick={async () => {
+                  await logout();
+                  router.push('/');
+                }}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>
@@ -490,16 +524,32 @@ export default function AdminPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Price (₹)
-                  </label>
-                  <input
-                    type="number"
-                    value={editForm.price}
-                    onChange={(e) => handleFormChange('price', parseInt(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Price in rupees"
-                  />
+                  <div className="flex items-center mb-2">
+                    <input
+                      type="checkbox"
+                      id="free-with-subscription"
+                      checked={editForm.is_free_with_subscription}
+                      onChange={(e) => handleFormChange('is_free_with_subscription', e.target.checked)}
+                      className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                    />
+                    <label htmlFor="free-with-subscription" className="ml-2 block text-sm text-gray-700">
+                      Free with Subscription
+                    </label>
+                  </div>
+                  {!editForm.is_free_with_subscription && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Price (₹)
+                      </label>
+                      <input
+                        type="number"
+                        value={editForm.price}
+                        onChange={(e) => handleFormChange('price', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="Price in rupees"
+                      />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -616,6 +666,11 @@ export default function AdminPage() {
                       <div>
                         <div className="text-sm font-medium text-gray-900">{toy.name}</div>
                         <div className="text-xs text-gray-400 mt-1 line-clamp-2">{toy.description}</div>
+                        {toy.tags?.includes('free-with-subscription') && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-1">
+                            Free with Subscription
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
@@ -629,7 +684,11 @@ export default function AdminPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {formatPriceSimple(toy.price)}
+                      {toy.tags?.includes('free-with-subscription') ? (
+                        <span className="text-blue-600 font-medium">Free with Subscription</span>
+                      ) : (
+                        formatPriceSimple(toy.price)
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex items-center gap-2">

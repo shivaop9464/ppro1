@@ -17,9 +17,6 @@ interface AuthState {
   initialized: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   signup: (name: string, email: string, password: string) => Promise<boolean>;
-  loginWithGoogle: () => Promise<boolean>;
-  loginWithFacebook: () => Promise<boolean>;
-  loginWithApple: () => Promise<boolean>;
   logout: () => Promise<void>;
   initialize: () => Promise<void>;
   checkSession: () => Promise<void>;
@@ -90,35 +87,66 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     set({ loading: true });
     
     try {
-      // Check if user is already logged in with Supabase
-      const { data: { session } } = await supabase.auth.getSession();
+      // Always check for fallback authentication in localStorage first
+      const fallbackUser = localStorage.getItem('playpro_current_user');
+      if (fallbackUser) {
+        const user = JSON.parse(fallbackUser);
+        set({
+          user,
+          isAuthenticated: true,
+          loading: false,
+          initialized: true
+        });
+        return;
+      }
       
-      if (session?.user) {
-        // Get user profile from database
-        const result = await supabaseService.getCurrentUserProfile();
+      // Check if Supabase is configured and user is already logged in
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (result?.data && !result?.error) {
-          set({
-            user: {
-              id: result.data.id,
-              name: result.data.name,
-              email: result.data.email,
-              isAdmin: result.data.is_admin
-            },
-            isAuthenticated: true
-          });
-        }
-      } else {
-        // Check for fallback authentication in localStorage
-        const fallbackUser = localStorage.getItem('playpro_current_user');
-        if (fallbackUser) {
-          const user = JSON.parse(fallbackUser);
-          set({
-            user,
-            isAuthenticated: true
-          });
+        if (session?.user) {
+          // Get user profile from database
+          const result = await supabaseService.getCurrentUserProfile();
+          
+          if (result?.data && !result?.error) {
+            set({
+              user: {
+                id: result.data.id,
+                name: result.data.name,
+                email: result.data.email,
+                isAdmin: result.data.is_admin
+              },
+              isAuthenticated: true,
+              loading: false,
+              initialized: true
+            });
+            return;
+          } else {
+            // If we can't get user profile, still consider user authenticated
+            // but with minimal information
+            set({
+              user: {
+                id: session.user.id,
+                name: session.user.user_metadata?.name || 'User',
+                email: session.user.email || '',
+                isAdmin: false
+              },
+              isAuthenticated: true,
+              loading: false,
+              initialized: true
+            });
+            return;
+          }
         }
       }
+      
+      // If no authentication found, ensure state is clean
+      set({ 
+        user: null, 
+        isAuthenticated: false, 
+        loading: false, 
+        initialized: true 
+      });
     } catch (error) {
       console.error('Error initializing auth:', error);
       console.log('Falling back to localStorage authentication');
@@ -129,11 +157,18 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         const user = JSON.parse(fallbackUser);
         set({
           user,
-          isAuthenticated: true
+          isAuthenticated: true,
+          loading: false,
+          initialized: true
+        });
+      } else {
+        set({ 
+          user: null, 
+          isAuthenticated: false, 
+          loading: false, 
+          initialized: true 
         });
       }
-    } finally {
-      set({ loading: false, initialized: true });
     }
   },
   
@@ -166,24 +201,61 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   
   checkSession: async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Always check localStorage first
+      const fallbackUser = localStorage.getItem('playpro_current_user');
+      if (fallbackUser) {
+        const user = JSON.parse(fallbackUser);
+        set({
+          user,
+          isAuthenticated: true
+        });
+        return;
+      }
       
-      if (session?.user) {
-        const result = await supabaseService.getCurrentUserProfile();
+      // Only check Supabase session if Supabase is configured
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (result?.data && !result?.error) {
-          set({
-            user: {
-              id: result.data.id,
-              name: result.data.name,
-              email: result.data.email,
-              isAdmin: result.data.is_admin
-            },
-            isAuthenticated: true
-          });
+        if (session?.user) {
+          const result = await supabaseService.getCurrentUserProfile();
+          
+          if (result?.data && !result?.error) {
+            set({
+              user: {
+                id: result.data.id,
+                name: result.data.name,
+                email: result.data.email,
+                isAdmin: result.data.is_admin
+              },
+              isAuthenticated: true
+            });
+          } else {
+            // If we can't get user profile, still consider user authenticated
+            set({
+              user: {
+                id: session.user.id,
+                name: session.user.user_metadata?.name || 'User',
+                email: session.user.email || '',
+                isAdmin: false
+              },
+              isAuthenticated: true
+            });
+          }
+        } else {
+          set({ user: null, isAuthenticated: false });
         }
       } else {
-        set({ user: null, isAuthenticated: false });
+        // For fallback authentication, check localStorage
+        const fallbackUser = localStorage.getItem('playpro_current_user');
+        if (fallbackUser) {
+          const user = JSON.parse(fallbackUser);
+          set({
+            user,
+            isAuthenticated: true
+          });
+        } else {
+          set({ user: null, isAuthenticated: false });
+        }
       }
     } catch (error) {
       console.error('Error checking session:', error);
@@ -195,7 +267,21 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     set({ loading: true });
     
     try {
-      // First try using the new login API route
+      // Always try fallback authentication first for demo users
+      const fallbackResult = await get().loginFallback(email, password);
+      if (fallbackResult) {
+        set({ loading: false });
+        return true;
+      }
+      
+      // Check if Supabase is configured
+      if (!supabase) {
+        console.log('Supabase not configured, using fallback authentication');
+        set({ loading: false });
+        return false;
+      }
+      
+      // Try using the login API route
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -215,14 +301,14 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         return true;
       }
       
-      console.log('API login failed, trying fallback authentication:', result.error);
-      // If API fails, try fallback authentication
-      return await get().loginFallback(email, password);
+      console.log('API login failed:', result.error);
+      set({ loading: false });
+      return false;
       
     } catch (error) {
-      console.error('Login error, trying fallback:', error);
-      // If any error occurs, try fallback authentication
-      return await get().loginFallback(email, password);
+      console.error('Login error:', error);
+      set({ loading: false });
+      return false;
     }
   },
   
@@ -267,7 +353,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           name: result.user.name,
           email: result.user.email,
           password: password, // In production, this should be hashed
-          isAdmin: result.user.isAdmin
+          isAdmin: result.user.isAdmin || false
         };
         
         existingUsers.push(newUser);
@@ -297,10 +383,12 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     
     try {
       // Try Supabase logout
-      const { error } = await supabaseService.signOut();
-      
-      if (error) {
-        console.error('Supabase logout error:', error.message);
+      if (supabase) {
+        const { error } = await supabaseService.signOut();
+        
+        if (error) {
+          console.error('Supabase logout error:', error.message);
+        }
       }
     } catch (error) {
       console.error('Logout error:', error);
@@ -316,104 +404,32 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       isAuthenticated: false, 
       loading: false 
     });
-  },
-
-  loginWithGoogle: async () => {
-    set({ loading: true });
-    
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      
-      if (error) {
-        console.error('Google login error:', error);
-        set({ loading: false });
-        return false;
-      }
-      
-      // OAuth redirects, so we don't need to handle the response here
-      return true;
-    } catch (error) {
-      console.error('Google login error:', error);
-      set({ loading: false });
-      return false;
-    }
-  },
-
-  loginWithFacebook: async () => {
-    set({ loading: true });
-    
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'facebook',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      
-      if (error) {
-        console.error('Facebook login error:', error);
-        set({ loading: false });
-        return false;
-      }
-      
-      // OAuth redirects, so we don't need to handle the response here
-      return true;
-    } catch (error) {
-      console.error('Facebook login error:', error);
-      set({ loading: false });
-      return false;
-    }
-  },
-
-  loginWithApple: async () => {
-    set({ loading: true });
-    
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      
-      if (error) {
-        console.error('Apple login error:', error);
-        set({ loading: false });
-        return false;
-      }
-      
-      // OAuth redirects, so we don't need to handle the response here
-      return true;
-    } catch (error) {
-      console.error('Apple login error:', error);
-      set({ loading: false });
-      return false;
-    }
   }
+
 }));
 
 // Initialize auth state when the store is created
 if (typeof window !== 'undefined') {
+  // Ensure default users are always initialized
+  initializeDefaultUsers();
+  
   useAuthStore.getState().initialize();
   
-  // Listen for auth changes
-  supabase.auth.onAuthStateChange((event, session) => {
-    const store = useAuthStore.getState();
-    
-    if (event === 'SIGNED_IN' && session?.user) {
-      // Refresh user profile when signed in
-      store.checkSession();
-    } else if (event === 'SIGNED_OUT') {
-      // Clear user data when signed out
-      useAuthStore.setState({ 
-        user: null, 
-        isAuthenticated: false 
-      });
-    }
-  });
+  // Listen for auth changes only if Supabase is configured
+  if (supabase) {
+    supabase.auth.onAuthStateChange((event, session) => {
+      const store = useAuthStore.getState();
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Refresh user profile when signed in
+        store.checkSession();
+      } else if (event === 'SIGNED_OUT') {
+        // Clear user data when signed out
+        useAuthStore.setState({ 
+          user: null, 
+          isAuthenticated: false 
+        });
+      }
+    });
+  }
 }

@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       toys = Array.isArray(data) ? data : (data.toys || [])
       
       // Convert toys to consistent format for frontend
-      toys = toys.map(toy => ({
+      toys = toys.map((toy: any) => ({
         ...toy,
         age_group: toy.ageGroup || toy.age_group,
         image_url: toy.imageUrl || toy.image_url || '',
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         })
       
       case 'update':
-        const toyIndex = toys.findIndex(toy => toy.id === toyId)
+        const toyIndex = toys.findIndex((toy: any) => toy.id === toyId)
         if (toyIndex === -1) {
           return NextResponse.json({
             success: false,
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
         })
       
       case 'delete':
-        const filteredToys = toys.filter(toy => toy.id !== toyId)
+        const filteredToys = toys.filter((toy: any) => toy.id !== toyId)
         if (filteredToys.length === toys.length) {
           return NextResponse.json({
             success: false,

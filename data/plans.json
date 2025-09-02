@@ -4,7 +4,7 @@
       "id": "basic",
       "name": "Basic",
       "toysPerMonth": 1,
-      "price": 1499,
+      "price": 699,
       "features": [
         "1 toy per month",
         "Age-appropriate selection",
@@ -18,7 +18,7 @@
       "id": "pro",
       "name": "Pro",
       "toysPerMonth": 3,
-      "price": 2999,
+      "price": 1299,
       "features": [
         "3 toys per month",
         "Age-appropriate selection",
@@ -34,7 +34,7 @@
       "id": "premium",
       "name": "Premium",
       "toysPerMonth": 5,
-      "price": 4499,
+      "price": 2199,
       "features": [
         "5 toys per month",
         "Age-appropriate selection",

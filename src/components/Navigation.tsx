@@ -1,21 +1,57 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ShoppingCart, User, LogOut, Menu } from 'lucide-react';
+import { ShoppingCart, Menu, X } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { useCartStore } from '@/store/cart';
 import { useState, useEffect } from 'react';
+
+// Conditional import of Clerk components
+let clerkComponents: {
+  useUser?: typeof import('@clerk/nextjs').useUser;
+  SignInButton?: typeof import('@clerk/nextjs').SignInButton;
+  SignUpButton?: typeof import('@clerk/nextjs').SignUpButton;
+  SignOutButton?: typeof import('@clerk/nextjs').SignOutButton;
+  SignedIn?: typeof import('@clerk/nextjs').SignedIn;
+  SignedOut?: typeof import('@clerk/nextjs').SignedOut;
+} = {};
+
+// Check if Clerk is properly configured
+const isClerkConfigured = () => {
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const secretKey = process.env.CLERK_SECRET_KEY;
+  
+  // Check if keys exist and are not placeholder values
+  return (
+    publishableKey && 
+    secretKey && 
+    !publishableKey.includes('YOUR_PUBLISHABLE_KEY') && 
+    !secretKey.includes('YOUR_SECRET_KEY')
+  );
+};
+
+// Try to import Clerk components only if properly configured
+if (isClerkConfigured()) {
+  try {
+    clerkComponents = require('@clerk/nextjs');
+  } catch (error) {
+    console.warn('Failed to import Clerk components:', error);
+  }
+}
+
+const { useUser, SignInButton, SignUpButton, SignOutButton, SignedIn, SignedOut } = clerkComponents;
 
 export default function Navigation() {
   const router = useRouter();
   const { user, isAuthenticated, logout, loading, initialize: initAuth } = useAuthStore();
   const { getCartCount, initialize: initCart } = useCartStore();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const clerkUserResult = useUser ? useUser() : null;
+  const { isLoaded, isSignedIn, user: clerkUser } = clerkUserResult || {};
   
-  const cartCount = getCartCount();
-
   // Initialize auth and cart on component mount
   useEffect(() => {
     const initialize = async () => {
@@ -33,38 +69,53 @@ export default function Navigation() {
     }
   }, [isAuthenticated, mounted, initCart]);
 
-  const handleLogout = async () => {
-    await logout();
-    router.push('/');
-    setIsMenuOpen(false);
-  };
-
-  const navLinks = [
+  // Base navigation links
+  const baseNavLinks = [
     { href: '/', label: 'Home' },
     { href: '/toys', label: 'Toys' },
-    { href: '/pricing', label: 'Plans' },
+    { href: '/plans', label: 'Plans' },
     { href: '/about', label: 'About' },
     { href: '/contact', label: 'Contact' },
   ];
 
+  // Add admin link if user is admin
+  const navLinks = user?.isAdmin 
+    ? [...baseNavLinks, { href: '/admin', label: 'Admin' }]
+    : baseNavLinks;
+
   return (
-    <nav className="glass-strong sticky top-0 z-50 border-b border-white/20">
+    <nav className="bg-white shadow-sm py-4">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <div className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              🧸 PlayPro
+            <div className="flex items-center">
+              <Image src="/images/playpro-logo.svg" alt="PlayPro Logo" width={240} height={72} priority className="hover:opacity-90 transition-opacity hidden md:block" />
+              <Image src="/images/playpro-logo.svg" alt="PlayPro Logo" width={140} height={42} priority className="hover:opacity-90 transition-opacity md:hidden" />
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Mobile menu button */}
+          <div className="md:hidden">
+            <button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="text-gray-700 hover:text-indigo-600 focus:outline-none"
+            >
+              {mobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </button>
+          </div>
+
+          {/* Main Navigation - Desktop */}
           <div className="hidden md:flex items-center space-x-8">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-gray-700 hover:text-purple-600 px-4 py-2 text-sm font-medium transition-all duration-300 rounded-xl hover:bg-white/50 backdrop-blur-sm"
+                className="text-gray-700 hover:text-indigo-600 font-medium"
               >
                 {link.label}
               </Link>
@@ -72,111 +123,156 @@ export default function Navigation() {
           </div>
 
           {/* Right Side Icons */}
-          <div className="flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-4">
             {/* Cart */}
-            <Link href="/cart" className="relative p-2 text-gray-700 hover:text-purple-600 transition-colors duration-300">
+            <Link href="/cart" className="text-gray-700 hover:text-indigo-600">
               <ShoppingCart className="h-6 w-6" />
-              {mounted && cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                  {cartCount}
-                </span>
-              )}
             </Link>
 
-            {/* User Menu */}
-            {mounted && loading ? (
-              <div className="hidden md:flex items-center space-x-2">
-                {/* Loading skeleton */}
-                <div className="w-16 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
-                <div className="w-20 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
-              </div>
-            ) : mounted && isAuthenticated ? (
-              <div className="relative group">
-                <button className="flex items-center space-x-2 text-gray-700 hover:text-primary-600">
-                  <User className="h-6 w-6" />
-                  <span className="hidden md:block text-sm">{user?.name}</span>
-                </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all">
-                  {user?.isAdmin && (
-                    <Link
-                      href="/admin"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Admin Panel
-                    </Link>
+            {/* Auth Links */}
+            <div className="flex items-center space-x-2">
+              {/* Clerk Authentication - Only if properly configured */}
+              {isClerkConfigured() && isLoaded && (
+                <>
+                  <SignedIn>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-gray-700 text-sm">
+                        {clerkUser?.fullName || clerkUser?.emailAddresses[0]?.emailAddress}
+                      </span>
+                      <SignOutButton>
+                        <button className="text-gray-700 hover:text-indigo-600 px-3 py-2 font-medium">
+                          Logout
+                        </button>
+                      </SignOutButton>
+                    </div>
+                  </SignedIn>
+                  
+                  <SignedOut>
+                    <div className="flex items-center space-x-2">
+                      <SignInButton 
+                        mode="modal"
+                        signUpForceRedirectUrl="/"
+                        signInForceRedirectUrl="/"
+                        fallbackRedirectUrl="/"
+                      >
+                        <button className="text-gray-700 hover:text-indigo-600 px-3 py-2 font-medium">
+                          Login
+                        </button>
+                      </SignInButton>
+                      <SignUpButton 
+                        mode="modal"
+                        signUpForceRedirectUrl="/"
+                        signInForceRedirectUrl="/"
+                        fallbackRedirectUrl="/"
+                      >
+                        <button className="bg-indigo-600 text-white px-4 py-2 rounded font-medium hover:bg-indigo-700">
+                          Sign Up
+                        </button>
+                      </SignUpButton>
+                    </div>
+                  </SignedOut>
+                </>
+              )}
+              
+              {/* Fallback to existing auth system for demo users or when Clerk is not configured */}
+              {(!isClerkConfigured() || !isLoaded) && (
+                <>
+                  {isAuthenticated ? (
+                    <div className="flex items-center space-x-3">
+                      <span className="text-gray-700 text-sm">
+                        {user?.name}
+                      </span>
+                      <button
+                        onClick={async () => {
+                          await logout();
+                          router.push('/');
+                        }}
+                        className="text-gray-700 hover:text-indigo-600 px-3 py-2 font-medium"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <Link
+                        href="/login"
+                        className="text-gray-700 hover:text-indigo-600 px-3 py-2 font-medium"
+                      >
+                        Login
+                      </Link>
+                      <Link
+                        href="/signup"
+                        className="bg-indigo-600 text-white px-4 py-2 rounded font-medium hover:bg-indigo-700"
+                      >
+                        Sign Up
+                      </Link>
+                    </>
                   )}
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    <span>Logout</span>
-                  </button>
-                </div>
-              </div>
-            ) : mounted ? (
-              <div className="hidden md:flex items-center space-x-2">
-                <Link
-                  href="/login"
-                  className="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/signup"
-                  className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-2 rounded-xl text-sm font-bold hover:from-purple-700 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
-                >
-                  Sign Up
-                </Link>
-              </div>
-            ) : (
-              <div className="hidden md:flex items-center space-x-2">
-                {/* Placeholder to maintain layout */}
-                <div className="w-16 h-10"></div>
-                <div className="w-20 h-10"></div>
-              </div>
-            )}
-
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-gray-700 hover:text-primary-600"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Mobile Navigation Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200">
+        
+        {/* Mobile Menu Overlay */}
+        {mobileMenuOpen && (
+          <div className="md:hidden mt-3 pt-3 pb-3 border-t">
             <div className="flex flex-col space-y-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium"
-                  onClick={() => setIsMenuOpen(false)}
+                  className="text-gray-700 hover:text-indigo-600 py-2 px-1 font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
                 >
                   {link.label}
                 </Link>
               ))}
-              {mounted && !isAuthenticated && (
+            </div>
+            
+            <div className="flex justify-between items-center mt-4 pt-4 border-t">
+              {/* Mobile Cart Link */}
+              <Link 
+                href="/cart" 
+                className="text-gray-700 hover:text-indigo-600 flex items-center space-x-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <ShoppingCart className="h-5 w-5" />
+                <span>Cart</span>
+              </Link>
+              
+              {/* Mobile Auth Links */}
+              {(!isClerkConfigured() || !isLoaded) && (
                 <>
-                  <Link
-                    href="/login"
-                    className="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    href="/signup"
-                    className="bg-primary-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-primary-700 mx-3"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Sign Up
-                  </Link>
+                  {isAuthenticated ? (
+                    <button
+                      onClick={async () => {
+                        await logout();
+                        router.push('/');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="text-gray-700 hover:text-indigo-600 px-3 py-2 font-medium"
+                    >
+                      Logout
+                    </button>
+                  ) : (
+                    <div className="flex space-x-2">
+                      <Link
+                        href="/login"
+                        className="text-gray-700 hover:text-indigo-600 px-2 py-2 font-medium"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Login
+                      </Link>
+                      <Link
+                        href="/signup"
+                        className="bg-indigo-600 text-white px-3 py-2 rounded font-medium hover:bg-indigo-700 text-sm"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Sign Up
+                      </Link>
+                    </div>
+                  )}
                 </>
               )}
             </div>

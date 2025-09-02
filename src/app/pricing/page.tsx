@@ -10,19 +10,39 @@ import plansData from '../../../data/plans.json';
 export default function PricingPage() {
   const router = useRouter();
   const { selectPlan, setAgeGroup } = useCartStore();
-  const [plans] = useState<Plan[]>(plansData.plans);
+  const [plans] = useState(plansData.plans);
   const [selectedAgeGroup, setSelectedAgeGroupLocal] = useState<string>('');
 
-  const handlePlanSelection = (plan: Plan) => {
-    selectPlan(plan);
+  const handlePlanSelection = (plan: any) => {
+    // Convert plan to expected interface format
+    const convertedPlan: Plan = {
+      id: plan.id,
+      name: plan.name,
+      toys_per_month: plan.toysPerMonth,
+      price: plan.price,
+      features: plan.features
+    };
     
+    // Calculate deposit amount based on plan price
+    let depositAmount = 0;
+    if (plan.price === 699) {
+      depositAmount = 1000;
+    } else if (plan.price === 1299) {
+      depositAmount = 3000;
+    } else if (plan.price === 2199) {
+      depositAmount = 6000;
+    }
+    
+    // Select the plan
+    selectPlan(convertedPlan);
+    
+    // Set age group if selected
     if (selectedAgeGroup) {
       setAgeGroup(selectedAgeGroup);
-      router.push(`/toys?age=${encodeURIComponent(selectedAgeGroup)}`);
-    } else {
-      // If no age group selected, redirect to age selection
-      router.push('/toys');
     }
+    
+    // Redirect to cart page
+    router.push('/cart');
   };
 
   const handleAgeGroupSelection = (ageGroup: string) => {
@@ -75,7 +95,7 @@ export default function PricingPage() {
             <div
               key={plan.id}
               className={`relative bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl ${
-                plan.popular ? 'ring-2 ring-primary-500 scale-105' : ''
+                (plan as any).popular ? 'ring-2 ring-primary-500 scale-105' : ''
               }`}
             >
               {/* Popular Badge */}
@@ -98,7 +118,7 @@ export default function PricingPage() {
                     {formatPriceSimple(plan.price)}
                   </div>
                   <div className="text-gray-600">
-                    {plan.toysPerMonth} {plan.toysPerMonth === 1 ? 'toy' : 'toys'} per month
+                    {(plan as any).toysPerMonth} {(plan as any).toysPerMonth === 1 ? 'toy' : 'toys'} per month
                   </div>
                 </div>
 
@@ -117,7 +137,7 @@ export default function PricingPage() {
                   onClick={() => handlePlanSelection(plan)}
                   disabled={!selectedAgeGroup}
                   className={`w-full py-3 px-6 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
-                    plan.popular
+                    (plan as any).popular
                       ? 'bg-primary-600 text-white hover:bg-primary-700'
                       : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -153,7 +173,7 @@ export default function PricingPage() {
                       <th key={plan.id} className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
                         <div className="flex flex-col items-center">
                           <span>{plan.name}</span>
-                          {plan.popular && (
+                          {(plan as any).popular && (
                             <span className="text-xs text-primary-600 font-medium mt-1">
                               Most Popular
                             </span>
@@ -182,7 +202,7 @@ export default function PricingPage() {
                     </td>
                     {plans.map((plan) => (
                       <td key={plan.id} className="px-6 py-4 text-sm text-center font-semibold">
-                        {plan.toysPerMonth}
+                        {(plan as any).toysPerMonth}
                       </td>
                     ))}
                   </tr>

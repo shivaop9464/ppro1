@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     
     // Enrich cart items with toy details
     const enrichedItems = cartItems.map(cartItem => {
-      const toy = toys.find(t => t.id === cartItem.toyId)
+      const toy = toys.find((t: any) => t.id === cartItem.toyId)
       return {
         id: cartItem.id,
         quantity: cartItem.quantity,
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
           name: toy.name,
           description: toy.description,
           category: toy.category,
-          price: toy.price > 100 ? toy.price / 100 : toy.price, // Handle legacy cents format
+          price: toy.price, // Fix: Don't convert price here
           age_group: toy.ageGroup || toy.age_group,
           image_url: toy.imageUrl || toy.image_url || '',
           brand: toy.brand || 'PlayPro',
@@ -159,6 +159,7 @@ export async function POST(request: NextRequest) {
           }, { status: 400 })
         }
         
+        // Fix: Filter by itemId if provided, otherwise by toyId
         const filteredItems = cartItems.filter(item => 
           itemId ? item.id !== itemId : item.toyId !== toyId
         )

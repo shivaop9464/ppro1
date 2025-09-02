@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/store/auth'
 
 export default function AdminSetupPage() {
   const [email, setEmail] = useState('admin@playpro.com')
@@ -12,7 +12,7 @@ export default function AdminSetupPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const router = useRouter()
-  const { signIn } = useAuth()
+  const { login } = useAuthStore()
 
   const handleSetupAdmin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,7 +41,7 @@ export default function AdminSetupPage() {
         // Try to sign in with the admin credentials
         setTimeout(async () => {
           try {
-            await signIn(email, password)
+            await login(email, password)
             setMessage('✅ Admin setup complete! Redirecting to admin panel...')
             setTimeout(() => {
               router.push('/admin')
@@ -81,7 +81,7 @@ export default function AdminSetupPage() {
     setMessage('')
 
     try {
-      await signIn(email, password)
+      await login(email, password)
       setMessage('✅ Login successful! Redirecting to admin panel...')
       setTimeout(() => {
         router.push('/admin')

@@ -9,9 +9,22 @@ type CartItem = Database['public']['Tables']['cart_items']['Row']
 type Order = Database['public']['Tables']['orders']['Row']
 
 export class SupabaseService {
+  // Helper method to check if Supabase is properly configured
+  private isSupabaseConfigured() {
+    if (!supabase) {
+      console.warn('Supabase is not configured. Please check your environment variables.')
+      return false
+    }
+    return true
+  }
+
   // ================== AUTH METHODS ==================
   
   async signUp(email: string, password: string, name: string) {
+    if (!this.isSupabaseConfigured()) {
+      return { data: null, error: { message: 'Supabase is not configured' } }
+    }
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -25,6 +38,10 @@ export class SupabaseService {
   }
 
   async signIn(email: string, password: string) {
+    if (!this.isSupabaseConfigured()) {
+      return { data: null, error: { message: 'Supabase is not configured' } }
+    }
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -33,16 +50,28 @@ export class SupabaseService {
   }
 
   async signOut() {
+    if (!this.isSupabaseConfigured()) {
+      return { error: { message: 'Supabase is not configured' } }
+    }
+    
     const { error } = await supabase.auth.signOut()
     return { error }
   }
 
   async getCurrentUser() {
+    if (!this.isSupabaseConfigured()) {
+      return null
+    }
+    
     const { data: { user } } = await supabase.auth.getUser()
     return user
   }
 
   async getCurrentUserProfile() {
+    if (!this.isSupabaseConfigured()) {
+      return { data: null, error: { message: 'Supabase is not configured' } }
+    }
+    
     const user = await this.getCurrentUser()
     if (!user) return null
 
@@ -59,11 +88,19 @@ export class SupabaseService {
   
   async getAllToys() {
     try {
-      // First, try to get toys from database
-      const { data: dbToys, error } = await supabase
-        .from('toys')
-        .select('*')
-        .order('created_at', { ascending: false })
+      // First, try to get toys from database if Supabase is configured
+      let dbToys = null
+      let error = null
+      
+      if (this.isSupabaseConfigured()) {
+        const result = await supabase
+          .from('toys')
+          .select('*')
+          .order('created_at', { ascending: false })
+        
+        dbToys = result.data
+        error = result.error
+      }
       
       let allToys = dbToys || []
       
@@ -101,6 +138,32 @@ export class SupabaseService {
   }
 
   async getToyById(id: string) {
+    if (!this.isSupabaseConfigured()) {
+      // Fallback to JSON API
+      try {
+        const response = await fetch(`/api/toys-fallback?id=${id}`)
+        if (response.ok) {
+          const jsonData = await response.json()
+          if (jsonData.success && jsonData.toy) {
+            return { 
+              data: {
+                ...jsonData.toy,
+                age_group: jsonData.toy.ageGroup || jsonData.toy.age_group,
+                image_url: jsonData.toy.imageUrl || jsonData.toy.image_url,
+                is_active: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }, 
+              error: null 
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching toy from fallback:', err)
+      }
+      return { data: null, error: { message: 'Supabase not configured and fallback failed' } }
+    }
+    
     const { data, error } = await supabase
       .from('toys')
       .select('*')
@@ -111,6 +174,10 @@ export class SupabaseService {
   }
 
   async getToysByCategory(category: string) {
+    if (!this.isSupabaseConfigured()) {
+      return { data: null, error: { message: 'Supabase is not configured' } }
+    }
+    
     const { data, error } = await supabase
       .from('toys')
       .select('*')
@@ -121,6 +188,10 @@ export class SupabaseService {
   }
 
   async searchToys(query: string) {
+    if (!this.isSupabaseConfigured()) {
+      return { data: null, error: { message: 'Supabase is not configured' } }
+    }
+    
     const { data, error } = await supabase
       .from('toys')
       .select('*')
@@ -136,6 +207,10 @@ export class SupabaseService {
     // Validate required fields
     if (!toyData.name || !toyData.category || !toyData.price) {
       return { data: null, error: { message: 'Missing required fields: name, category, price' } }
+    }
+    
+    if (!this.isSupabaseConfigured()) {
+      return { data: null, error: { message: 'Supabase is not configured' } }
     }
     
     const { data, error } = await supabase
@@ -155,6 +230,10 @@ export class SupabaseService {
       return { data: null, error: { message: 'Toy ID is required' } }
     }
     
+    if (!this.isSupabaseConfigured()) {
+      return { data: null, error: { message: 'Supabase is not configured' } }
+    }
+    
     const { data, error } = await supabase
       .from('toys')
       .update(toyData)
@@ -167,6 +246,10 @@ export class SupabaseService {
   }
 
   async deleteToy(id: string) {
+    if (!this.isSupabaseConfigured()) {
+      return { data: null, error: { message: 'Supabase is not configured' } }
+    }
+    
     const { data, error } = await supabase
       .from('toys')
       .delete()
@@ -180,6 +263,20 @@ export class SupabaseService {
   // ================== PLANS METHODS ==================
   
   async getAllPlans() {
+    if (!this.isSupabaseConfigured()) {
+      // Fallback to JSON data
+      try {
+        const response = await fetch('/data/plans.json')
+        if (response.ok) {
+          const plans = await response.json()
+          return { data: plans, error: null }
+        }
+      } catch (err) {
+        console.error('Error fetching plans from JSON:', err)
+      }
+      return { data: null, error: { message: 'Supabase not configured and fallback failed' } }
+    }
+    
     const { data, error } = await supabase
       .from('plans')
       .select('*')
@@ -189,6 +286,21 @@ export class SupabaseService {
   }
 
   async getPlanById(id: string) {
+    if (!this.isSupabaseConfigured()) {
+      // Fallback to JSON data
+      try {
+        const response = await fetch('/data/plans.json')
+        if (response.ok) {
+          const plans = await response.json()
+          const plan = plans.find((p: any) => p.id === id)
+          return { data: plan, error: null }
+        }
+      } catch (err) {
+        console.error('Error fetching plan from JSON:', err)
+      }
+      return { data: null, error: { message: 'Supabase not configured and fallback failed' } }
+    }
+    
     const { data, error } = await supabase
       .from('plans')
       .select('*')

@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       
       // Convert our toy to the JSON format
       const jsonToy = {
-        id: newToy.id,
+        id: (newToy as any).id,
         name: newToy.name,
         description: newToy.description,
         category: newToy.category,
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
         ageGroup: newToy.age_group, // Convert to camelCase for JSON
         imageUrl: newToy.image_url, // Convert to camelCase for JSON
         stock: newToy.stock,
-        tags: newToy.tags || []
+        tags: (newToy as any).tags || []
       }
       
       // Add new toy to the list

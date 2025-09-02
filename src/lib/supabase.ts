@@ -1,9 +1,69 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Check if environment variables are set
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+console.log('Supabase Environment Variables:')
+console.log('- NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl)
+console.log('- NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'SET' : 'NOT SET')
+console.log('- SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceRoleKey ? 'SET' : 'NOT SET')
+
+// Create a warning message for missing environment variables
+if (!supabaseUrl) {
+  console.warn('NEXT_PUBLIC_SUPABASE_URL is not set. Supabase client will not work.')
+}
+
+if (!supabaseAnonKey) {
+  console.warn('NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. Supabase client will not work.')
+}
+
+// Validate URL format
+const isValidUrl = (url: string | undefined): boolean => {
+  if (!url) return false
+  try {
+    new URL(url)
+    console.log('URL is valid:', url)
+    return true
+  } catch (error) {
+    console.error('URL is invalid:', url, error)
+    return false
+  }
+}
+
+// Check URL validity
+const isUrlValid = isValidUrl(supabaseUrl)
+console.log('Supabase URL validity:', isUrlValid)
+
+// Only create the Supabase client if both URL and anon key are provided and valid
+export const supabase = supabaseUrl && supabaseAnonKey && isUrlValid
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null
+
+console.log('Supabase client created:', !!supabase)
+
+// Service role client for admin operations (bypasses RLS)
+export const createClientWithServiceRole = () => {
+  if (!supabaseServiceRoleKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is required for service role client')
+  }
+  
+  if (!supabaseUrl) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL environment variable is required')
+  }
+  
+  if (!isValidUrl(supabaseUrl)) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is not a valid URL')
+  }
+  
+  return createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+}
 
 // Types for your database tables
 export interface Database {

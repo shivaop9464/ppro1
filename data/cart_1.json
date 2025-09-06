@@ -2,7 +2,13 @@
   {
     "id": "cart_1756789619261_jorj6",
     "toyId": "toy_1756747814679_el2b6",
-    "quantity": 5,
+    "quantity": 7,
     "addedAt": "2025-09-02T05:06:59.261Z"
+  },
+  {
+    "id": "cart_1756919266371_h317m",
+    "toyId": "toy_1756310935516_tgecf",
+    "quantity": 1,
+    "addedAt": "2025-09-03T17:07:46.371Z"
   }
 ]

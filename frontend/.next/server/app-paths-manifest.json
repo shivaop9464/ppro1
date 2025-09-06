@@ -1,0 +1,6 @@
+{
+  "/toys/page": "app/toys/page.js",
+  "/simple-test/page": "app/simple-test/page.js",
+  "/test-css/page": "app/test-css/page.js",
+  "/_not-found/page": "app/_not-found/page.js"
+}

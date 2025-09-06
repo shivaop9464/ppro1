@@ -5,7 +5,9 @@ const nextConfig = {
   },
   experimental: {
     esmExternals: true
-  }
+  },
+  // Configure Next.js to use the .next directory for build output
+  distDir: '.next',
 };
 
 export default nextConfig;

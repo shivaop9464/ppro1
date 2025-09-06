@@ -131,9 +131,7 @@ The application comes with pre-configured demo accounts:
 - **Email:** `demo@playpro.com`
 - **Password:** `demo123`
 
-### Admin Account
-- **Email:** `admin@playpro.com`
-- **Password:** `admin123`
+
 
 *Note: These accounts are automatically created when you first visit the login page.*
 

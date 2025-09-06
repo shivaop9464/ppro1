@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextFetchEvent } from "next/server";
 
 // Only apply auth middleware to protected routes
 const isProtectedRoute = createRouteMatcher([
@@ -33,7 +34,7 @@ const isClerkConfigured = () => {
   }
 };
 
-export default function middleware(req: Request) {
+export default function middleware(req: Request, event: NextFetchEvent) {
   try {
     // Only use Clerk middleware if properly configured
     if (isClerkConfigured()) {
@@ -41,7 +42,7 @@ export default function middleware(req: Request) {
         if (isProtectedRoute(req)) {
           auth().protect();
         }
-      })(req);
+      })(req, event);
     }
     
     // Skip Clerk middleware if not properly configured

@@ -53,15 +53,11 @@ export default function RootLayout({
 }) {
   // Only wrap with ClerkProvider if properly configured
   let clerkProviderEnabled = false;
-  let ClerkProvider: any;
   
   try {
     clerkProviderEnabled = isClerkConfigured();
-    if (clerkProviderEnabled) {
-      ({ ClerkProvider } = require('@clerk/nextjs'));
-    }
   } catch (error) {
-    console.warn('Error loading ClerkProvider:', error);
+    console.warn('Error checking Clerk configuration:', error);
     clerkProviderEnabled = false;
   }
   
@@ -81,12 +77,19 @@ export default function RootLayout({
   );
 
   // Conditionally wrap with ClerkProvider
-  if (clerkProviderEnabled && ClerkProvider) {
-    return (
-      <ClerkProvider>
-        {content}
-      </ClerkProvider>
-    );
+  if (clerkProviderEnabled) {
+    try {
+      const { ClerkProvider } = require('@clerk/nextjs');
+      return (
+        <ClerkProvider>
+          {content}
+        </ClerkProvider>
+      );
+    } catch (error) {
+      console.warn('Error loading ClerkProvider:', error);
+      // Fall back to content without ClerkProvider
+      return content;
+    }
   }
   
   return content;

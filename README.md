@@ -191,6 +191,40 @@ The application includes a contact page with:
 3. Import your GitHub repository
 4. Deploy with default settings
 
+### Deploy to Render
+
+1. Push your code to GitHub (already done)
+2. Visit [render.com](https://render.com)
+3. Create a new Web Service
+4. Connect your GitHub repository
+5. Configure the following settings:
+   - **Name:** playpro2 (or your preferred name)
+   - **Environment:** Node
+   - **Build Command:** `npm run build`
+   - **Start Command:** `npm run start`
+   - **Auto-Deploy:** Yes
+6. Add the required environment variables (see below)
+7. Click "Create Web Service"
+
+### Environment Variables for Render
+
+You'll need to configure the following environment variables in your Render dashboard:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+NEXT_PUBLIC_RAZORPAY_KEY_ID=your_razorpay_key_id_here
+RAZORPAY_KEY_ID=your_razorpay_key_id_here
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret_here
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key_here
+CLERK_SECRET_KEY=your_clerk_secret_key_here
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/signup
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
+```
+
 ### Deploy to Netlify
 
 1. Build the project: `npm run build`
@@ -198,91 +232,3 @@ The application includes a contact page with:
 3. Configure as a static site
 
 ### Deploy to Other Platforms
-
-The project can be deployed to any platform that supports Node.js:
-- Railway
-- Render
-- Digital Ocean
-- AWS
-- Google Cloud
-
-## 🛠️ Development
-
-### Adding New Features
-
-1. Create components in `src/components/`
-2. Add pages in `src/app/`
-3. Manage state in `src/store/`
-4. Update data in `data/` folder
-
-### Styling Guidelines
-
-- Use Tailwind CSS classes
-- Follow the glassmorphism design pattern
-- Maintain responsive design principles
-- Keep animations smooth and purposeful
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Port 3000 already in use:**
-```bash
-npx kill-port 3000
-npm run dev
-```
-
-**Dependencies not installing:**
-```bash
-rm -rf node_modules package-lock.json
-npm install
-```
-
-**TypeScript errors:**
-```bash
-npm run lint
-# Fix any issues shown
-```
-
-**Build failing:**
-```bash
-npm run build
-# Check for any compilation errors
-```
-
-## 📄 License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/new-feature`
-3. Commit changes: `git commit -am 'Add new feature'`
-4. Push to branch: `git push origin feature/new-feature`
-5. Submit a pull request
-
-## 📞 Support
-
-If you encounter any issues or need help:
-
-1. Check the troubleshooting section above
-2. Open an issue on GitHub
-3. Contact via email: hello@playpro.com
-4. Call: +91-7893514424
-
-## 🎯 Future Enhancements
-
-- [ ] Payment gateway integration
-- [ ] Real-time notifications
-- [ ] User reviews and ratings
-- [ ] Advanced search and filtering
-- [ ] Mobile app development
-- [ ] API integration for dynamic data
-- [ ] Multi-language support
-
----
-
-**Developed with ❤️ using Next.js, TypeScript, and Tailwind CSS**
-
-⭐ **Star this repository if you find it helpful!**

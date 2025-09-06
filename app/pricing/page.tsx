@@ -1,17 +1,35 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Star, ArrowRight } from 'lucide-react';
 import { Plan, useCartStore } from '@/store/cart';
 import { formatPriceSimple, ageGroups } from '@/lib/utils';
-import plansData from '../../../data/plans.json';
 
 export default function PricingPage() {
   const router = useRouter();
   const { selectPlan, setAgeGroup } = useCartStore();
-  const [plans] = useState(plansData.plans);
+  const [plans, setPlans] = useState<any[]>([]);
   const [selectedAgeGroup, setSelectedAgeGroupLocal] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const response = await fetch('/plans.json');
+        const data = await response.json();
+        setPlans(data.plans);
+      } catch (error) {
+        console.error('Error fetching plans:', error);
+        // Fallback to empty array
+        setPlans([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlans();
+  }, []);
 
   const handlePlanSelection = (plan: any) => {
     // Convert plan to expected interface format
@@ -49,6 +67,17 @@ export default function PricingPage() {
     setSelectedAgeGroupLocal(ageGroup);
     setAgeGroup(ageGroup);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading plans...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -124,7 +153,7 @@ export default function PricingPage() {
 
                 {/* Features */}
                 <div className="space-y-4 mb-8">
-                  {plan.features.map((feature, index) => (
+                  {plan.features.map((feature: string, index: number) => (
                     <div key={index} className="flex items-start gap-3">
                       <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                       <span className="text-gray-700">{feature}</span>
@@ -198,21 +227,41 @@ export default function PricingPage() {
                   </tr>
                   <tr>
                     <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                      Toys per Month
+                      Toys Per Month
                     </td>
                     {plans.map((plan) => (
-                      <td key={plan.id} className="px-6 py-4 text-sm text-center font-semibold">
+                      <td key={plan.id} className="px-6 py-4 text-sm text-center">
                         {(plan as any).toysPerMonth}
                       </td>
                     ))}
                   </tr>
                   <tr>
                     <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                      Free Shipping & Returns
+                      Free Shipping
                     </td>
                     {plans.map((plan) => (
-                      <td key={plan.id} className="px-6 py-4 text-center">
-                        <Check className="h-5 w-5 text-green-500 mx-auto" />
+                      <td key={plan.id} className="px-6 py-4 text-sm text-center">
+                        <Check className="h-5 w-5 text-green-500 inline" />
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                      Flexible Pausing
+                    </td>
+                    {plans.map((plan) => (
+                      <td key={plan.id} className="px-6 py-4 text-sm text-center">
+                        <Check className="h-5 w-5 text-green-500 inline" />
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                      Sanitized Toys
+                    </td>
+                    {plans.map((plan) => (
+                      <td key={plan.id} className="px-6 py-4 text-sm text-center">
+                        <Check className="h-5 w-5 text-green-500 inline" />
                       </td>
                     ))}
                   </tr>
@@ -221,11 +270,11 @@ export default function PricingPage() {
                       Priority Support
                     </td>
                     {plans.map((plan) => (
-                      <td key={plan.id} className="px-6 py-4 text-center">
-                        {plan.id !== 'basic' ? (
-                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                      <td key={plan.id} className="px-6 py-4 text-sm text-center">
+                        {(plan as any).popular || plan.id === 'premium' ? (
+                          <Check className="h-5 w-5 text-green-500 inline" />
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <span className="text-gray-400">-</span>
                         )}
                       </td>
                     ))}
@@ -235,25 +284,25 @@ export default function PricingPage() {
                       Educational Guides
                     </td>
                     {plans.map((plan) => (
-                      <td key={plan.id} className="px-6 py-4 text-center">
-                        {plan.id !== 'basic' ? (
-                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                      <td key={plan.id} className="px-6 py-4 text-sm text-center">
+                        {plan.id === 'basic' ? (
+                          <span className="text-gray-400">-</span>
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <Check className="h-5 w-5 text-green-500 inline" />
                         )}
                       </td>
                     ))}
                   </tr>
                   <tr>
                     <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                      Exclusive Premium Toys
+                      Exclusive Toys
                     </td>
                     {plans.map((plan) => (
-                      <td key={plan.id} className="px-6 py-4 text-center">
+                      <td key={plan.id} className="px-6 py-4 text-sm text-center">
                         {plan.id === 'premium' ? (
-                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                          <Check className="h-5 w-5 text-green-500 inline" />
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <span className="text-gray-400">-</span>
                         )}
                       </td>
                     ))}
@@ -263,86 +312,17 @@ export default function PricingPage() {
                       Dedicated Consultant
                     </td>
                     {plans.map((plan) => (
-                      <td key={plan.id} className="px-6 py-4 text-center">
+                      <td key={plan.id} className="px-6 py-4 text-sm text-center">
                         {plan.id === 'premium' ? (
-                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                          <Check className="h-5 w-5 text-green-500 inline" />
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <span className="text-gray-400">-</span>
                         )}
                       </td>
                     ))}
                   </tr>
                 </tbody>
               </table>
-            </div>
-          </div>
-        </div>
-
-        {/* FAQ Section */}
-        <div className="mt-20">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Frequently Asked Questions
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Can I change my plan anytime?
-                </h3>
-                <p className="text-gray-600">
-                  Yes! You can upgrade or downgrade your plan at any time. Changes will take effect from your next billing cycle.
-                </p>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  What if my child doesn't like a toy?
-                </h3>
-                <p className="text-gray-600">
-                  No worries! You can return any toy for free, and we'll send a replacement. Our goal is 100% satisfaction.
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  How are toys sanitized?
-                </h3>
-                <p className="text-gray-600">
-                  All toys are thoroughly cleaned and sanitized using child-safe products before being shipped to you.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Can I pause my subscription?
-                </h3>
-                <p className="text-gray-600">
-                  Absolutely! You can pause your subscription for up to 3 months without any fees. Perfect for vacations or breaks.
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Do you ship nationwide?
-                </h3>
-                <p className="text-gray-600">
-                  Yes, we deliver across India with free shipping on all orders. Most deliveries arrive within 2-3 business days.
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  What happens when my child outgrows toys?
-                </h3>
-                <p className="text-gray-600">
-                  Simply update your child's age in your account, and we'll start sending age-appropriate toys in your next box.
-                </p>
-              </div>
             </div>
           </div>
         </div>

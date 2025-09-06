@@ -147,9 +147,9 @@ export default function SocialLoginSetupPage() {
               <ol className="list-decimal list-inside space-y-2 text-gray-600">
                 <li>Go to the <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800">Google Cloud Console</a></li>
                 <li>Create a new project or select an existing one</li>
-                <li>Navigate to APIs & Services > Credentials</li>
-                <li>Click "Create Credentials" > "OAuth client ID"</li>
-                <li>Select "Web application" as the application type</li>
+                <li>Navigate to APIs &amp; Services {`>`} Credentials</li>
+                <li>Click &quot;Create Credentials&quot; {`>`} &quot;OAuth client ID&quot;</li>
+                <li>Select &quot;Web application&quot; as the application type</li>
                 <li>Add the following redirect URIs:</li>
               </ol>
             </div>

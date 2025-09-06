@@ -8,39 +8,48 @@ const isProtectedRoute = createRouteMatcher([
 
 // Check if Clerk keys are properly configured
 const isClerkConfigured = () => {
-  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  
-  // Check if keys exist and are not placeholder values
-  return (
-    publishableKey && 
-    secretKey && 
-    !publishableKey.includes('YOUR_PUBLISHABLE_KEY') && 
-    !secretKey.includes('YOUR_SECRET_KEY') &&
-    publishableKey !== 'YOUR_PUBLISHABLE_KEY' &&
-    secretKey !== 'YOUR_SECRET_KEY' &&
-    !publishableKey.includes('pk_test_XXXXXXXX') && 
-    !secretKey.includes('sk_test_XXXXXXXX') &&
-    publishableKey.startsWith('pk_') &&
-    secretKey.startsWith('sk_') &&
-    publishableKey.length > 30 && // Valid keys are longer
-    secretKey.length > 30
-  );
+  try {
+    const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+    const secretKey = process.env.CLERK_SECRET_KEY;
+    
+    // Check if keys exist and are not placeholder values
+    return (
+      publishableKey && 
+      secretKey && 
+      !publishableKey.includes('YOUR_PUBLISHABLE_KEY') && 
+      !secretKey.includes('YOUR_SECRET_KEY') &&
+      publishableKey !== 'YOUR_PUBLISHABLE_KEY' &&
+      secretKey !== 'YOUR_SECRET_KEY' &&
+      !publishableKey.includes('pk_test_XXXXXXXX') && 
+      !secretKey.includes('sk_test_XXXXXXXX') &&
+      publishableKey.startsWith('pk_') &&
+      secretKey.startsWith('sk_') &&
+      publishableKey.length > 30 && // Valid keys are longer
+      secretKey.length > 30
+    );
+  } catch (error) {
+    console.warn('Error checking Clerk configuration:', error);
+    return false;
+  }
 };
 
-// Export a simple middleware that only applies Clerk when properly configured
 export default function middleware(req: Request) {
-  // Only use Clerk middleware if properly configured
-  if (isClerkConfigured()) {
-    return clerkMiddleware((auth, req) => {
-      if (isProtectedRoute(req)) {
-        auth().protect();
-      }
-    })(req);
+  try {
+    // Only use Clerk middleware if properly configured
+    if (isClerkConfigured()) {
+      return clerkMiddleware((auth, req) => {
+        if (isProtectedRoute(req)) {
+          auth().protect();
+        }
+      })(req);
+    }
+    
+    // Skip Clerk middleware if not properly configured
+    return undefined;
+  } catch (error) {
+    console.warn('Error in middleware, skipping Clerk:', error);
+    return undefined;
   }
-  
-  // Skip Clerk middleware if not properly configured
-  return undefined;
 }
 
 export const config = {

@@ -230,7 +230,7 @@ export class SupabaseService {
     if (!this.isSupabaseConfigured()) {
       // Fallback to JSON data
       try {
-        const response = await fetch('/data/plans.json')
+        const response = await fetch('/plans.json')
         if (response.ok) {
           const plans = await response.json()
           return { data: plans, error: null }
@@ -253,7 +253,7 @@ export class SupabaseService {
     if (!this.isSupabaseConfigured()) {
       // Fallback to JSON data
       try {
-        const response = await fetch('/data/plans.json')
+        const response = await fetch('/plans.json')
         if (response.ok) {
           const plans = await response.json()
           const plan = plans.find((p: any) => p.id === id)
